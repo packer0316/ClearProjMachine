@@ -1254,25 +1254,85 @@ class MainWindow:
             menu.grab_release()
     
     def _open_in_explorer(self, file_path: str):
-        """在檔案總管中開啟檔案所在的資料夾"""
+        """在檔案總管中開啟並選中檔案 - 改進版"""
         try:
             import subprocess
             import platform
             
+            # 修正路徑格式
+            normalized_path = os.path.normpath(file_path)
+            
+            # 檢查檔案是否存在
+            if not os.path.exists(normalized_path):
+                # 嘗試其他路徑格式
+                alt_path1 = file_path.replace('/', '\\')
+                alt_path2 = file_path.replace('\\', '/')
+                
+                if os.path.exists(alt_path1):
+                    normalized_path = alt_path1
+                elif os.path.exists(alt_path2):
+                    normalized_path = alt_path2
+                else:
+                    self._append_output(f"❌ 檔案不存在: {file_path}")
+                    return
+            
             # 取得檔案所在的資料夾路徑
-            folder_path = os.path.dirname(file_path)
+            folder_path = os.path.dirname(normalized_path)
             
             if platform.system() == "Windows":
-                # 修正Windows的explorer命令語法，開啟檔案所在的資料夾
-                subprocess.run(["explorer", folder_path], shell=True)
+                # 嘗試多種方法來選中檔案
+                select_methods = [
+                    # 方法1: 標準 /select 方法（最常用）
+                    ["explorer", "/select,", normalized_path],
+                    # 方法2: 無逗號的 /select 方法
+                    ["explorer", "/select", normalized_path],
+                    # 方法3: 詳細的 /e,/select 方法
+                    ["explorer", "/e,/select,", normalized_path]
+                ]
+                
+                success = False
+                for i, cmd in enumerate(select_methods, 1):
+                    try:
+                        # 不捕獲輸出，讓 explorer 正常執行
+                        subprocess.run(cmd, timeout=3)
+                        self._append_output(f"✅ 已在檔案總管中開啟並選中檔案: {normalized_path}")
+                        success = True
+                        break
+                    except subprocess.TimeoutExpired:
+                        # 超時也算成功，因為 explorer 可能還在運行
+                        self._append_output(f"✅ 已在檔案總管中開啟並選中檔案: {normalized_path}")
+                        success = True
+                        break
+                    except Exception as e:
+                        # 繼續嘗試下一個方法
+                        continue
+                
+                # 如果所有選中方法都失敗，回退到開啟資料夾
+                if not success:
+                    try:
+                        subprocess.run(["explorer", folder_path], timeout=3)
+                        self._append_output(f"⚠️ 無法選中檔案，已開啟資料夾: {folder_path}")
+                    except Exception as e:
+                        self._append_output(f"❌ 無法開啟檔案總管: {str(e)}")
+                        
             elif platform.system() == "Darwin":  # macOS
-                subprocess.run(["open", "-R", file_path])
+                try:
+                    subprocess.run(["open", "-R", normalized_path], timeout=3)
+                    self._append_output(f"✅ 已在Finder中開啟並選中檔案: {normalized_path}")
+                except Exception as e:
+                    subprocess.run(["open", folder_path])
+                    self._append_output(f"⚠️ 無法選中檔案，已開啟資料夾: {folder_path}")
+                    
             else:  # Linux
-                subprocess.run(["xdg-open", folder_path])
-            
-            self._append_output(f"✅ 已在檔案總管中開啟資料夾: {folder_path}")
+                try:
+                    # Linux上沒有標準的選中方法，直接開啟資料夾
+                    subprocess.run(["xdg-open", folder_path], timeout=3)
+                    self._append_output(f"✅ 已在檔案管理器中開啟資料夾: {folder_path}")
+                except Exception as e:
+                    self._append_output(f"❌ 無法開啟檔案管理器: {str(e)}")
+                    
         except Exception as e:
-            self._append_output(f"❌ 無法在檔案總管中開啟: {file_path} - {str(e)}")
+            self._append_output(f"❌ 檔案總管操作失敗: {file_path} - {str(e)}")
     
     def _copy_file_path(self, file_path: str):
         """複製檔案路徑到剪貼簿"""
