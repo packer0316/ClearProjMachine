@@ -9,13 +9,14 @@ from src.utils.logger import ScannerLogger
 class EFKScanner:
     """EFK檔案掃描器 - 負責解析.efk、.efkmat、.efkmodel檔案中的引用檔案"""
     
-    def __init__(self, project_path: str, image_types: Set[str]):
+    def __init__(self, project_path: str, image_types: Set[str], progress_callback=None):
         """
         初始化EFK掃描器
         
         Args:
             project_path: 專案根目錄路徑
             image_types: 要搜尋的圖片類型集合
+            progress_callback: 進度回調函數，接收 (current, total, message) 參數
         """
         self.project_path = Path(project_path)
         self.image_types = image_types
@@ -26,6 +27,12 @@ class EFKScanner:
         self.logger = ScannerLogger()
         self.successful_scans = 0
         self.failed_scans = 0
+        self.progress_callback = progress_callback
+    
+    def _report_progress(self, current: int, total: int, message: str):
+        """報告進度"""
+        if self.progress_callback:
+            self.progress_callback(current, total, message)
     
     def scan_efk_files(self) -> Dict[str, List[str]]:
         """
@@ -40,12 +47,27 @@ class EFKScanner:
             # 尋找所有相關檔案
             self._find_all_efk_files()
             total_files = len(self.efk_files) + len(self.efkmat_files) + len(self.efkmodel_files)
+            
+            # 報告找到的檔案數量
             self.logger.info(f"找到 {len(self.efk_files)} 個EFK檔案, {len(self.efkmat_files)} 個EFKMAT檔案, {len(self.efkmodel_files)} 個EFKMODEL檔案")
+            
+            # 如果沒有檔案要分析，直接返回
+            if total_files == 0:
+                self._report_progress(0, 0, "未找到任何EFK相關檔案")
+                return self.results
+            
+            # 初始化進度計數器
+            current_file_count = 0
             
             # 分析每個EFK檔案
             for i, efk_file in enumerate(self.efk_files, 1):
+                current_file_count += 1
                 try:
-                    self.logger.info(f"分析EFK檔案 {i}/{len(self.efk_files)}: {efk_file.name}")
+                    # 報告當前分析進度
+                    progress_msg = f"正在分析EFK檔案: {efk_file.name}"
+                    self._report_progress(current_file_count, total_files, progress_msg)
+                    self.logger.info(f"分析EFK檔案 ({current_file_count}/{total_files}): {efk_file.name}")
+                    
                     referenced_files = self._analyze_efk_file(efk_file)
                     if referenced_files:
                         self.results[str(efk_file)] = referenced_files
@@ -63,8 +85,13 @@ class EFKScanner:
             
             # 分析每個EFKMAT檔案
             for i, efkmat_file in enumerate(self.efkmat_files, 1):
+                current_file_count += 1
                 try:
-                    self.logger.info(f"分析EFKMAT檔案 {i}/{len(self.efkmat_files)}: {efkmat_file.name}")
+                    # 報告當前分析進度
+                    progress_msg = f"正在分析EFKMAT檔案: {efkmat_file.name}"
+                    self._report_progress(current_file_count, total_files, progress_msg)
+                    self.logger.info(f"分析EFKMAT檔案 ({current_file_count}/{total_files}): {efkmat_file.name}")
+                    
                     referenced_files = self._analyze_efkmat_file(efkmat_file)
                     if referenced_files:
                         self.results[str(efkmat_file)] = referenced_files
@@ -82,8 +109,13 @@ class EFKScanner:
             
             # 分析每個EFKMODEL檔案
             for i, efkmodel_file in enumerate(self.efkmodel_files, 1):
+                current_file_count += 1
                 try:
-                    self.logger.info(f"分析EFKMODEL檔案 {i}/{len(self.efkmodel_files)}: {efkmodel_file.name}")
+                    # 報告當前分析進度
+                    progress_msg = f"正在分析EFKMODEL檔案: {efkmodel_file.name}"
+                    self._report_progress(current_file_count, total_files, progress_msg)
+                    self.logger.info(f"分析EFKMODEL檔案 ({current_file_count}/{total_files}): {efkmodel_file.name}")
+                    
                     referenced_files = self._analyze_efkmodel_file(efkmodel_file)
                     if referenced_files:
                         self.results[str(efkmodel_file)] = referenced_files
@@ -98,6 +130,9 @@ class EFKScanner:
                     self.logger.error(f"分析EFKMODEL檔案 {efkmodel_file} 時發生錯誤: {error_msg}")
                     self.logger.log_file_scan(str(efkmodel_file), False, error_msg)
                     continue
+            
+            # 報告分析完成
+            self._report_progress(total_files, total_files, "檔案分析完成")
             
             # 記錄掃描摘要
             self.logger.log_scan_summary(total_files, self.successful_scans, self.failed_scans)

@@ -824,19 +824,52 @@ class MainWindow:
             # 進度 10% - 初始化掃描器
             self._update_progress(10, "正在初始化掃描器")
             
+            # 定義進度回調函數
+            def progress_callback(current, total, message):
+                """掃描進度回調函數 - 同時更新文字輸出和進度條"""
+                if total > 0:
+                    # 更新文字輸出
+                    progress_text = f"({current}/{total}) {message}"
+                    self._append_output(progress_text)
+                    
+                    # 計算檔案分析階段的進度
+                    # 檔案分析階段佔30%到60%的進度空間（共30%）
+                    analysis_start = 30.0  # 分析階段開始進度
+                    analysis_range = 30.0  # 分析階段進度範圍（30%-60%）
+                    
+                    # 計算當前檔案在分析階段的百分比
+                    file_progress = current / total  # 0.0 到 1.0
+                    
+                    # 轉換為實際進度值
+                    actual_progress = analysis_start + (file_progress * analysis_range)
+                    
+                    # 確保進度值在合理範圍內
+                    actual_progress = min(max(actual_progress, analysis_start), analysis_start + analysis_range)
+                    
+                    # 更新進度條（滑順更新）
+                    self._update_progress(actual_progress, f"正在分析檔案 ({current}/{total})")
+                    
+                    # 更新GUI顯示
+                    self.root.update_idletasks()
+                else:
+                    # 處理沒有檔案的情況
+                    self._append_output("(0/0) 未找到任何EFK相關檔案")
+                    self._update_progress(60, "沒有檔案需要分析")
+                    self.root.update_idletasks()
+            
             # 使用預設的圖片類型集合
             default_image_types = {"png", "jpg", "jpeg", "tga", "dds", "bmp", "tiff", "tif", "webp", "ktx", "pvr"}
-            scanner = EFKScanner(self.selected_path.get(), default_image_types)
+            scanner = EFKScanner(self.selected_path.get(), default_image_types, progress_callback)
             
             # 顯示進度訊息
             self._append_output("正在掃描EFK檔案...")
             self._append_output("請稍候，分析進行中...")
             self._append_output("")
             
-            # 進度 30% - 開始掃描EFK檔案
-            self._update_progress(30, "正在掃描EFK檔案")
+            # 進度 30% - 開始掃描EFK檔案（檔案分析階段的起始點）
+            self._update_progress(30, "開始掃描EFK檔案")
             
-            # 執行掃描
+            # 執行掃描（進度條會在callback中滑順更新）
             results = scanner.scan_efk_files()
             
             # 進度 60% - 處理掃描結果
@@ -850,6 +883,9 @@ class MainWindow:
             
             # 找出未引用的檔案
             self._find_and_display_unused_files(results, scanner)
+            
+            # 進度 90% - 整理結果
+            self._update_progress(90, "正在整理分析結果")
             
             # 進度 100% - 分析完成
             self._stop_progress("分析完成")
@@ -870,6 +906,9 @@ class MainWindow:
     def _find_and_display_unused_files(self, results: Dict[str, List[str]], scanner):
         """找出並顯示未引用的檔案 - 修正邏輯16: 考慮目錄範圍限制"""
         try:
+            # 進度 82% - 開始收集引用檔案
+            self._update_progress(82, "正在收集被引用的檔案")
+            
             # 收集所有被引用的檔案路徑 - 新增目錄範圍檢查
             referenced_files = set()
             
@@ -896,6 +935,9 @@ class MainWindow:
                         else:
                             self._append_output(f"⚠️  無法解析引用檔案或跨目錄: {ref_file}")
             
+            # 進度 84% - 開始掃描專案檔案
+            self._update_progress(84, "正在掃描專案中的所有檔案")
+            
             # 方法2: 直接從掃描器獲取所有檔案
             all_files_in_project = set()
             # 擴展檔案類型，包含圖片檔案和效果檔案
@@ -915,12 +957,29 @@ class MainWindow:
                     if file_ext in target_extensions:
                         all_files_in_project.add(file_path)
             
+            # 進度 86% - 統計檔案數量
+            self._update_progress(86, "正在統計檔案數量")
+            
             self._append_output(f"📊 專案中總共有 {len(all_files_in_project)} 個目標檔案（圖片 + 效果檔案）")
             self._append_output(f"📊 被引用的檔案（同目錄範圍）: {len(referenced_files)} 個")
             
+            # 進度 88% - 開始檢查未引用檔案
+            self._update_progress(88, "正在檢查未引用的檔案")
+            
             # 方法3: 改進的未引用檔案檢查 - 加入目錄範圍限制
             unused_files = []
+            total_files = len(all_files_in_project)
+            processed_files = 0
+            
             for file_path in all_files_in_project:
+                processed_files += 1
+                
+                # 計算檢查階段的細粒度進度（88%-90%之間）
+                check_progress = 88.0 + (processed_files / total_files) * 2.0  # 2%的進度範圍
+                if processed_files % 10 == 0:  # 每10個檔案更新一次進度，避免過於頻繁
+                    self._update_progress(check_progress, f"檢查檔案 ({processed_files}/{total_files})")
+                    self.root.update_idletasks()
+                
                 is_referenced = False
                 
                 # 檢查是否在引用檔案列表中（已經過目錄範圍檢查）
@@ -980,12 +1039,18 @@ class MainWindow:
                 
                 # 將未引用檔案加入GUI列表
                 added_count = 0
-                for file_path in unused_files:
+                total_unused = len(unused_files)
+                for i, file_path in enumerate(unused_files, 1):
                     try:
                         print(f"正在添加檔案到GUI: {file_path}")
                         self._add_unused_file(file_path)
                         self._append_output(f"  📄 {file_path}")
                         added_count += 1
+                        
+                        # 顯示添加進度（89%-90%之間）
+                        if i % 5 == 0 or i == total_unused:  # 每5個檔案或最後一個檔案更新進度
+                            add_progress = 89.0 + (i / total_unused) * 1.0  # 1%的進度範圍
+                            self._update_progress(add_progress, f"添加檔案到列表 ({i}/{total_unused})")
                         
                         # 強制更新GUI
                         self.root.update()
@@ -1028,6 +1093,9 @@ class MainWindow:
                         text="未引用檔案列表 (沒有找到未引用檔案)",
                         foreground="green"
                     )
+            
+            # 進度 90% - 未引用檔案查找完成
+            self._update_progress(90, "未引用檔案查找完成")
                 
         except Exception as e:
             self._append_output(f"❌ 搜尋未引用檔案時發生錯誤: {str(e)}")
