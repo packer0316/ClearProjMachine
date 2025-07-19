@@ -11,7 +11,7 @@ class MainWindow:
         """初始化主視窗"""
         self.root = tk.Tk()
         self.root.title("遊戲圖片檢索工具")
-        self.root.geometry("800x600")  # 設定初始大小
+        self.root.geometry("1000x800")  # 調整視窗大小：增加寬度和高度
         
         # 初始化變數
         self.selected_path = tk.StringVar()
@@ -99,10 +99,10 @@ class MainWindow:
         )
         self.status_label.grid(row=1, column=0, sticky="w", pady=(0, 5))
         
-        # 重新設計的檔案列表 - 使用簡單的Listbox
+        # 重新設計的檔案列表 - 使用簡單的Listbox，調整高度以顯示至少4條內容
         self.unused_listbox = tk.Listbox(
             unused_frame,
-            height=8,
+            height=12,  # 增加高度，確保能顯示至少4條內容的預設高度
             selectmode=tk.EXTENDED,
             font=("Consolas", 9)
         )
@@ -152,7 +152,7 @@ class MainWindow:
         output_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
         
         # 建立文字區域和捲軸
-        self.output_text = tk.Text(output_frame, wrap=tk.WORD, height=15, font=("Consolas", 9))
+        self.output_text = tk.Text(output_frame, wrap=tk.WORD, height=18, font=("Consolas", 9))
         self.output_scrollbar = ttk.Scrollbar(output_frame, orient="vertical", command=self.output_text.yview)
         self.output_text.configure(yscrollcommand=self.output_scrollbar.set)
         
