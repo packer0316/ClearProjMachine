@@ -12,7 +12,13 @@
 不要有耦合與指標引用的函數共同引用造成後續衝突的問提
 我要一個步驟一個步驟慢慢來做 因此 請遵守我給的步驟
 
-1.不要更動我的 rule.md 檔案 2.若要新增描述說明 一律修改在 document 裡面 3.自動生產出來的單元測試工具 測試結束後自動刪除 4.我不要有輸出的 json 檔案 5.除了 main.py 的 python 檔案 其他 python 檔案不要出現在專案的第一層
+1. 不要更動我的 rule.md 檔案 
+2. 若要新增描述說明 一律修改在 document 裡面 
+3. 自動生產出來的單元測試工具 測試結束後自動刪除 
+4. 我不要有輸出的 json 檔案 
+5. 除了 main.py 的 python 檔案 其他 python 檔案不要出現在專案的第一層 
+6. 不要產生報告給 我不需要.md檔案
+7. logs我也不要 不要產生 log檔案給我
 
 ## 最終目的
 
@@ -101,3 +107,76 @@ ex:
 先做一個單元測試 
 掃描.efkmodel 裡面所引用的檔案
 因為目前掃描出來 裡面都是沒有任何引用的 可能分析錯誤
+
+#### 測試步驟7-2
+用剛剛單元測試掃描
+C:\Users\User\Desktop\OceanTale\effekseer\Efk
+這底下所有的.ekfmodel 有沒有任何引用
+
+#### 測試步驟7-3
+我用這個專案掃描了
+"C:\Users\User\Desktop\OceanTale\effekseer\Efk\CrazyPirateShip"
+為甚麼列出的 .efk 只有 Attack.efk
+而其他.efk都沒有引用任何東西嗎  請再次確認
+
+#### 修正實作 7-4
+當我選擇路徑 
+"C:\Users\User\Desktop\OceanTale\effekseer\Efk\CrazyPirateShipEarth"
+所有的檔案都有被引用
+但是當我選擇
+"C:\Users\User\Desktop\OceanTale\effekseer\Efk"
+卻出現 "C:\Users\User\Desktop\OceanTale\effekseer\Efk\CrazyPirateShipEarth" 裡面有檔案未被引用
+請修正這個問題
+
+#### 修正實作 7-5
+一樣的問題 當我選擇
+"C:\Users\User\Desktop\OceanTale\effekseer\Efk\CrazyPirateShipEarth" 所有檔案都有被引用
+但當我選擇路徑
+"C:\Users\User\Desktop\OceanTale\effekseer\Efk"
+卻出現
+"C:\Users\User\Desktop\OceanTale\effekseer\Efk\CrazyPirateShipEarth\vfx_aurora.png"未被引用
+請修正他
+
+### 實作步驟 8
+為引用檔案列表 
+列出來的信息  請向上而下列出 不是先向下對齊
+並且如果我點了刪除 
+他的checkbox 跟 刪除按鈕應該要反灰並禁按
+
+### 修正步驟 8-1
+請幫我把  未引用檔案列表
+這個UI的code刪除乾淨  重新做一個 
+我要的功能是 如果有找到未被引用的資源 
+就列在窗框內 要有checkBox可以選擇 並且 旁邊有刪除單檔的按鈕
+下方有 刪除全部的按鈕 
+當該檔被刪除 該列就會反"紅"(顏色) 並且該列的checkBox與刪除單檔的按鈕會反灰 不可按
+
+### 實作步驟 9
+請將這個專案中 
+未引用檔按列表 以及 這個輸出框 從這個專案中移除 
+我不要顯示這個功能 先把這個功能的code全部刪掉 
+但是 分析結果輸出的所有功能要保留
+
+### 實作步驟 10
+很好 目前功能都正常
+
+
+#### 優化步驟 11 
+如果我先選擇檔案路徑 再功能選擇
+不要清除我所選擇的檔案路徑
+
+#### 優化步驟 12
+1. 當我選擇一個 未引用檔案列表 裡面的檔案 按下"刪除除選中檔案"時
+確實有刪除 但顯示"✅ 批量刪除完成: 成功 1 個，失敗 1 個"
+應該是成功 1個 失敗0個才對 
+
+2. 當我選擇檔案 再按下"再檔案總管中開啟"時 沒有正確開啟該檔案的位置
+還是一樣 還是一樣 
+
+
+
+
+
+
+
+

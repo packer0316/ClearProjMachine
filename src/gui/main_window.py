@@ -189,8 +189,8 @@ class MainWindow:
         """功能選擇變更時的回調函數"""
         selected = self.selected_function.get()
         if selected != "選擇功能":
-            # 重置所有選擇
-            self._reset_selections()
+            # 只清除未引用檔案列表，保留路徑選擇
+            self._clear_unused_files_list()
             print(f"選擇的功能: {selected}")
     
     def _reset_selections(self):
@@ -206,10 +206,79 @@ class MainWindow:
         self.output_text.delete(1.0, tk.END)
     
     def _append_output(self, text):
-        """添加文字到輸出視窗"""
-        self.output_text.insert(tk.END, text + "\n")
+        """添加文字到輸出視窗，根據訊息類型自動選擇顏色"""
+        # 配置顏色標籤（如果尚未配置）
+        self._configure_output_colors()
+        
+        # 根據訊息內容判斷顏色
+        color_tag = self._get_message_color_tag(text)
+        
+        if color_tag:
+            # 插入帶顏色的文字
+            start_pos = self.output_text.index(tk.END + "-1c")  # 取得當前結束位置
+            self.output_text.insert(tk.END, text + "\n", color_tag)  # 直接在插入時應用標籤
+        else:
+            # 插入普通文字
+            self.output_text.insert(tk.END, text + "\n")
+        
         self.output_text.see(tk.END)  # 自動捲動到底部
         self.root.update()  # 更新GUI
+    
+    def _configure_output_colors(self):
+        """配置輸出視窗的顏色標籤"""
+        if not hasattr(self, '_colors_configured'):
+            # 成功訊息 - 綠色 (使用更明顯的顏色)
+            self.output_text.tag_configure("success", 
+                                         foreground="green",
+                                         font=("Consolas", 9, "normal"))
+            
+            # 失敗訊息 - 紅色 (使用更明顯的顏色)
+            self.output_text.tag_configure("error", 
+                                         foreground="red",
+                                         font=("Consolas", 9, "normal"))
+            
+            # 警告訊息 - 橙色 (使用更明顯的顏色)
+            self.output_text.tag_configure("warning", 
+                                         foreground="orange",
+                                         font=("Consolas", 9, "normal"))
+            
+            # 資訊訊息 - 藍色 (使用更明顯的顏色)
+            self.output_text.tag_configure("info", 
+                                         foreground="blue",
+                                         font=("Consolas", 9, "normal"))
+            
+            # 設定標籤優先級（確保我們的標籤在最上層）
+            self.output_text.tag_raise("success")
+            self.output_text.tag_raise("error") 
+            self.output_text.tag_raise("warning")
+            self.output_text.tag_raise("info")
+            
+            # 強制更新配置
+            self.output_text.update()
+            
+            # 標記已配置
+            self._colors_configured = True
+    
+    def _get_message_color_tag(self, text):
+        """根據訊息內容判斷應該使用的顏色標籤"""
+        # 警告訊息 - 橙色 (優先檢查，避免被錯誤訊息攔截)
+        if any(indicator in text for indicator in ["⚠️", "警告", "無法解析", "UI更新失敗"]) or (text.startswith("⚠️") and "檔案不存在" in text):
+            return "warning"
+        
+        # 成功訊息 - 綠色
+        elif any(indicator in text for indicator in ["✅", "成功", "完成", "已刪除檔案", "已在檔案總管中開啟", "已複製檔案路徑", "沒有找到未引用的檔案"]):
+            return "success"
+        
+        # 失敗訊息 - 紅色  
+        elif any(indicator in text for indicator in ["❌", "失敗", "錯誤", "無法", "不存在", "未找到任何EFK", "刪除檔案失敗", "檢查結果時發生錯誤"]):
+            return "error"
+        
+        # 資訊訊息 - 藍色
+        elif any(indicator in text for indicator in ["🔍", "📊", "📁", "📄", "📋", "==="]):
+            return "info"
+        
+        # 默認不使用顏色
+        return None
     
     def _clear_unused_files_list(self):
         """清除未引用檔案列表"""
@@ -280,6 +349,10 @@ class MainWindow:
             # 建立checkbox變數
             checkbox_var = tk.BooleanVar()
             self.file_checkboxes[file_path] = checkbox_var
+            
+            # 初始化file_delete_buttons如果不存在
+            if not hasattr(self, 'file_delete_buttons'):
+                self.file_delete_buttons = {}
             
             # 啟用全部清除按鈕
             if hasattr(self, 'clear_all_button') and self.clear_all_button.winfo_exists():
@@ -360,7 +433,7 @@ class MainWindow:
                                 break
                 
                 # 禁用刪除按鈕
-                if file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
+                if hasattr(self, 'file_delete_buttons') and file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
                     self.file_delete_buttons[file_path].config(state="disabled")
                 
                 self._append_output(f"✅ 已刪除檔案: {file_path}")
@@ -402,45 +475,53 @@ class MainWindow:
         
         for file_path in file_paths_to_delete:
             try:
+                # 檢查檔案是否存在
                 if os.path.exists(file_path):
+                    # 嘗試刪除檔案
                     os.remove(file_path)
                     deleted_count += 1
+                    self._append_output(f"✅ 已刪除檔案: {file_path}")
                     
                     # 只有在GUI已初始化的情況下才更新UI
                     if hasattr(self, 'unused_listbox') and self.unused_listbox.winfo_exists():
-                        # 將檔案標籤變為灰色並加上刪除線效果
-                        if file_path in self.file_labels:
-                            labels = self.file_labels[file_path]
-                            if labels['name'].winfo_exists():
-                                labels['name'].config(
-                                    foreground="gray",
-                                    font=("TkDefaultFont", 9, "overstrike")
-                                )
-                            if labels['dir'].winfo_exists():
-                                labels['dir'].config(
-                                    foreground="lightgray",
-                                    font=("TkDefaultFont", 8, "overstrike")
-                                )
-                            if labels['size'] and labels['size'].winfo_exists():
-                                labels['size'].config(
-                                    foreground="lightgray",
-                                    font=("TkDefaultFont", 8, "overstrike")
-                                )
-                        
-                        # 禁用checkbox
-                        if file_path in self.file_checkboxes:
-                            # 找到對應的checkbox widget並禁用
-                            for widget in self.unused_listbox.winfo_children():
-                                for child in widget.winfo_children():
-                                    if isinstance(child, ttk.Checkbutton) and child.winfo_exists() and child.cget("variable") == str(self.file_checkboxes[file_path]):
-                                        child.config(state="disabled")
-                                        break
-                        
-                        # 禁用刪除按鈕
-                        if file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
-                            self.file_delete_buttons[file_path].config(state="disabled")
+                        try:
+                            # 將檔案標籤變為灰色並加上刪除線效果
+                            if file_path in self.file_labels:
+                                labels = self.file_labels[file_path]
+                                if labels['name'].winfo_exists():
+                                    labels['name'].config(
+                                        foreground="gray",
+                                        font=("TkDefaultFont", 9, "overstrike")
+                                    )
+                                if labels['dir'].winfo_exists():
+                                    labels['dir'].config(
+                                        foreground="lightgray",
+                                        font=("TkDefaultFont", 8, "overstrike")
+                                    )
+                                if labels['size'] and labels['size'].winfo_exists():
+                                    labels['size'].config(
+                                        foreground="lightgray",
+                                        font=("TkDefaultFont", 8, "overstrike")
+                                    )
+                            
+                            # 禁用checkbox
+                            if file_path in self.file_checkboxes:
+                                # 找到對應的checkbox widget並禁用
+                                for widget in self.unused_listbox.winfo_children():
+                                    for child in widget.winfo_children():
+                                        if isinstance(child, ttk.Checkbutton) and child.winfo_exists() and child.cget("variable") == str(self.file_checkboxes[file_path]):
+                                            child.config(state="disabled")
+                                            break
+                            
+                            # 禁用刪除按鈕
+                            if file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
+                                self.file_delete_buttons[file_path].config(state="disabled")
+                        except Exception as ui_error:
+                            # UI更新失敗不影響刪除統計
+                            self._append_output(f"⚠️ UI更新失敗: {str(ui_error)}")
                 else:
-                    failed_count += 1
+                    # 檔案不存在，不算失敗，因為可能已經被刪除了
+                    self._append_output(f"⚠️ 檔案不存在: {file_path}")
             except Exception as e:
                 failed_count += 1
                 self._append_output(f"❌ 刪除檔案失敗: {file_path} - {str(e)}")
@@ -469,45 +550,53 @@ class MainWindow:
         
         for file_path in self.unused_files:
             try:
+                # 檢查檔案是否存在
                 if os.path.exists(file_path):
+                    # 嘗試刪除檔案
                     os.remove(file_path)
                     deleted_count += 1
+                    self._append_output(f"✅ 已刪除檔案: {file_path}")
                     
                     # 只有在GUI已初始化的情況下才更新UI
                     if gui_initialized:
-                        # 將檔案標籤變為灰色並加上刪除線效果
-                        if file_path in self.file_labels:
-                            labels = self.file_labels[file_path]
-                            if labels['name'].winfo_exists():
-                                labels['name'].config(
-                                    foreground="gray",
-                                    font=("TkDefaultFont", 9, "overstrike")
-                                )
-                            if labels['dir'].winfo_exists():
-                                labels['dir'].config(
-                                    foreground="lightgray",
-                                    font=("TkDefaultFont", 8, "overstrike")
-                                )
-                            if labels['size'] and labels['size'].winfo_exists():
-                                labels['size'].config(
-                                    foreground="lightgray",
-                                    font=("TkDefaultFont", 8, "overstrike")
-                                )
-                        
-                        # 禁用checkbox
-                        if file_path in self.file_checkboxes:
-                            # 找到對應的checkbox widget並禁用
-                            for widget in self.unused_listbox.winfo_children():
-                                for child in widget.winfo_children():
-                                    if isinstance(child, ttk.Checkbutton) and child.winfo_exists() and child.cget("variable") == str(self.file_checkboxes[file_path]):
-                                        child.config(state="disabled")
-                                        break
-                        
-                        # 禁用刪除按鈕
-                        if file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
-                            self.file_delete_buttons[file_path].config(state="disabled")
+                        try:
+                            # 將檔案標籤變為灰色並加上刪除線效果
+                            if file_path in self.file_labels:
+                                labels = self.file_labels[file_path]
+                                if labels['name'].winfo_exists():
+                                    labels['name'].config(
+                                        foreground="gray",
+                                        font=("TkDefaultFont", 9, "overstrike")
+                                    )
+                                if labels['dir'].winfo_exists():
+                                    labels['dir'].config(
+                                        foreground="lightgray",
+                                        font=("TkDefaultFont", 8, "overstrike")
+                                    )
+                                if labels['size'] and labels['size'].winfo_exists():
+                                    labels['size'].config(
+                                        foreground="lightgray",
+                                        font=("TkDefaultFont", 8, "overstrike")
+                                    )
+                            
+                            # 禁用checkbox
+                            if file_path in self.file_checkboxes:
+                                # 找到對應的checkbox widget並禁用
+                                for widget in self.unused_listbox.winfo_children():
+                                    for child in widget.winfo_children():
+                                        if isinstance(child, ttk.Checkbutton) and child.winfo_exists() and child.cget("variable") == str(self.file_checkboxes[file_path]):
+                                            child.config(state="disabled")
+                                            break
+                            
+                            # 禁用刪除按鈕
+                            if hasattr(self, 'file_delete_buttons') and file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
+                                self.file_delete_buttons[file_path].config(state="disabled")
+                        except Exception as ui_error:
+                            # UI更新失敗不影響刪除統計
+                            self._append_output(f"⚠️ UI更新失敗: {str(ui_error)}")
                 else:
-                    failed_count += 1
+                    # 檔案不存在，不算失敗，因為可能已經被刪除了
+                    self._append_output(f"⚠️ 檔案不存在: {file_path}")
             except Exception as e:
                 failed_count += 1
                 self._append_output(f"❌ 刪除檔案失敗: {file_path} - {str(e)}")
@@ -962,19 +1051,23 @@ class MainWindow:
             menu.grab_release()
     
     def _open_in_explorer(self, file_path: str):
-        """在檔案總管中開啟檔案"""
+        """在檔案總管中開啟檔案所在的資料夾"""
         try:
             import subprocess
             import platform
             
+            # 取得檔案所在的資料夾路徑
+            folder_path = os.path.dirname(file_path)
+            
             if platform.system() == "Windows":
-                subprocess.run(["explorer", "/select,", file_path])
+                # 修正Windows的explorer命令語法，開啟檔案所在的資料夾
+                subprocess.run(["explorer", folder_path], shell=True)
             elif platform.system() == "Darwin":  # macOS
                 subprocess.run(["open", "-R", file_path])
             else:  # Linux
-                subprocess.run(["xdg-open", os.path.dirname(file_path)])
+                subprocess.run(["xdg-open", folder_path])
             
-            self._append_output(f"✅ 已在檔案總管中開啟: {file_path}")
+            self._append_output(f"✅ 已在檔案總管中開啟資料夾: {folder_path}")
         except Exception as e:
             self._append_output(f"❌ 無法在檔案總管中開啟: {file_path} - {str(e)}")
     
