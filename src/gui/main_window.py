@@ -16,8 +16,10 @@ class MainWindow:
         # 初始化變數
         self.selected_path = tk.StringVar()
         self.selected_function = tk.StringVar()
+        self.code_project_path = tk.StringVar()  # 新增：程式碼專案路徑
         self.functions = {
-            "EFK檔案掃描": "efk_scan"
+            "EFK檔案掃描": "efk_scan",
+            "c3b圖片掃描": "c3b_scan"
         }
         
         # 初始化資料結構
@@ -125,18 +127,34 @@ class MainWindow:
         select_button = ttk.Button(path_frame, text="選擇專案資料夾", command=self._select_path)
         select_button.grid(row=0, column=1)
         
-        # 開始分析按鈕
+        # 程式碼專案路徑選擇區域 (只在C3B掃描時顯示)
+        self.code_path_frame = ttk.LabelFrame(main_frame, text="程式碼專案選擇 (可選)", padding="10")
+        # 初始隱藏
+        
+        # 程式碼專案路徑顯示
+        self.code_path_label = ttk.Label(self.code_path_frame, text="尚未選擇程式碼專案路徑 (Lua檔案檢查)", foreground="gray")
+        self.code_path_label.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        # 程式碼專案選擇按鈕
+        code_select_button = ttk.Button(self.code_path_frame, text="選擇程式碼專案", command=self._select_code_path)
+        code_select_button.grid(row=0, column=1)
+        
+        # 清除程式碼專案按鈕
+        code_clear_button = ttk.Button(self.code_path_frame, text="清除", command=self._clear_code_path)
+        code_clear_button.grid(row=0, column=2, padx=(5, 0))
+        
+        # 開始分析按鈕 (調整row)
         analyze_button = ttk.Button(
             main_frame, 
             text="開始分析", 
             command=self._start_analysis,
             style="Accent.TButton"
         )
-        analyze_button.grid(row=3, column=0, columnspan=2, pady=(20, 10))
+        analyze_button.grid(row=4, column=0, columnspan=2, pady=(20, 10))
         
-        # 未引用檔案區域 - 重新設計
+        # 未引用檔案區域 (調整row)
         unused_frame = ttk.LabelFrame(main_frame, text="未引用檔案列表", padding="10")
-        unused_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 10))
+        unused_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 10))
         
         # 自訂綠色進度條 - 使用 Canvas 確保顏色正確
         self.progress_frame = tk.Frame(unused_frame, height=25, bg='white')
@@ -239,7 +257,7 @@ class MainWindow:
         
         # 輸出視窗區域
         output_frame = ttk.LabelFrame(main_frame, text="分析結果輸出", padding="10")
-        output_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
+        output_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
         
         # 建立文字區域和捲軸
         self.output_text = tk.Text(output_frame, wrap=tk.WORD, height=18, font=("Consolas", 9))
@@ -278,12 +296,36 @@ class MainWindow:
             self.selected_path.set(path)
             self.path_label.config(text=path, foreground="black")
     
+    def _select_code_path(self):
+        """選擇程式碼專案路徑"""
+        path = filedialog.askdirectory(title="選擇程式碼專案資料夾 (包含Lua檔案)")
+        if path:
+            self.code_project_path.set(path)
+            # 顯示路徑，但限制長度避免界面過寬
+            display_path = path if len(path) <= 50 else "..." + path[-47:]
+            self.code_path_label.config(text=f"程式碼專案: {display_path}", foreground="black")
+    
+    def _clear_code_path(self):
+        """清除程式碼專案路徑"""
+        self.code_project_path.set("")
+        self.code_path_label.config(text="尚未選擇程式碼專案路徑 (Lua檔案檢查)", foreground="gray")
+    
     def _on_function_change(self, event=None):
         """功能選擇變更時的回調函數"""
         selected = self.selected_function.get()
         if selected != "選擇功能":
             # 只清除未引用檔案列表，保留路徑選擇
             self._clear_unused_files_list()
+            
+            # 根據選擇的功能顯示/隱藏程式碼專案選擇器
+            if selected == "c3b圖片掃描":
+                # 顯示程式碼專案選擇區域
+                self.code_path_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+            else:
+                # 隱藏程式碼專案選擇區域並清除路徑
+                self.code_path_frame.grid_remove()
+                self._clear_code_path()
+            
             print(f"選擇的功能: {selected}")
     
     def _reset_selections(self):
@@ -803,6 +845,8 @@ class MainWindow:
         
         if function_type == "efk_scan":
             self._start_efk_analysis()
+        elif function_type == "c3b_scan":
+            self._start_c3b_analysis()
         else:
             messagebox.showinfo("資訊", f"{self.selected_function.get()}功能將在後續步驟中實作")
     
@@ -1776,5 +1820,362 @@ class MainWindow:
         """更新狀態標籤"""
         if hasattr(self, 'status_label') and self.status_label.winfo_exists():
             self.status_label.config(text=message, foreground=color)
+    
+    def _start_c3b_analysis(self):
+        """開始C3B檔案分析"""
+        from src.scanner.c3b_scanner import C3BScanner
+        
+        try:
+            # 開始進度條 - 0%
+            self._start_progress("正在準備分析...")
+            
+            # 清除輸出視窗和未引用檔案列表
+            self._clear_output()
+            self._clear_unused_files_list()
+            self._append_output("=== C3B檔案分析開始 ===")
+            self._append_output(f"掃描路徑: {self.selected_path.get()}")
+            self._append_output("")
+            
+            # 進度 10% - 初始化掃描器
+            self._update_progress(10, "正在初始化掃描器")
+            
+            # 定義進度回調函數
+            def progress_callback(current, total, message):
+                """掃描進度回調函數 - 同時更新文字輸出和進度條"""
+                if total > 0:
+                    # 更新文字輸出
+                    progress_text = f"({current}/{total}) {message}"
+                    self._append_output(progress_text)
+                    
+                    # 計算檔案分析階段的進度
+                    # 檔案分析階段佔30%到60%的進度空間（共30%）
+                    analysis_start = 30.0  # 分析階段開始進度
+                    analysis_range = 30.0  # 分析階段進度範圍（30%-60%）
+                    
+                    # 計算當前檔案在分析階段的百分比
+                    file_progress = current / total  # 0.0 到 1.0
+                    
+                    # 轉換為實際進度值
+                    actual_progress = analysis_start + (file_progress * analysis_range)
+                    
+                    # 確保進度值在合理範圍內
+                    actual_progress = min(max(actual_progress, analysis_start), analysis_start + analysis_range)
+                    
+                    # 更新進度條（滑順更新）
+                    self._update_progress(actual_progress, f"正在分析檔案 ({current}/{total})")
+                    
+                    # 更新GUI顯示
+                    self.root.update_idletasks()
+                else:
+                    # 處理沒有檔案的情況
+                    self._append_output("(0/0) 未找到任何C3B檔案")
+                    self._update_progress(60, "沒有檔案需要分析")
+                    self.root.update_idletasks()
+            
+            # 使用預設的圖片類型集合（只關心.png和.jpg）
+            default_image_types = {"png", "jpg", "jpeg"}
+            scanner = C3BScanner(self.selected_path.get(), default_image_types, progress_callback)
+            
+            # 顯示進度訊息
+            self._append_output("正在掃描C3B檔案...")
+            self._append_output("請稍候，分析進行中...")
+            self._append_output("")
+            
+            # 進度 30% - 開始掃描C3B檔案（檔案分析階段的起始點）
+            self._update_progress(30, "開始掃描C3B檔案")
+            
+            # 執行掃描（進度條會在callback中滑順更新）
+            results = scanner.scan_c3b_files()
+            
+            # 進度 60% - 處理掃描結果
+            self._update_progress(60, "正在處理掃描結果")
+            
+            # 顯示結果
+            self._show_c3b_analysis_results_in_output(results, scanner)
+            
+            # 進度 80% - 查找未引用檔案
+            self._update_progress(80, "正在查找未引用檔案")
+            
+            # 找出未引用的檔案
+            self._find_and_display_c3b_unused_files(results, scanner)
+            
+            # 進度 90% - 整理結果
+            self._update_progress(90, "正在整理分析結果")
+            
+            # 進度 100% - 分析完成
+            self._stop_progress("分析完成")
+            
+        except KeyboardInterrupt:
+            self._stop_progress("分析被中斷")
+            self._append_output("❌ 分析已被使用者中斷")
+        except Exception as e:
+            # 停止進度條
+            self._stop_progress("分析失敗")
+            # 使用更安全的錯誤處理
+            try:
+                error_msg = f"分析過程中發生錯誤：{str(e)}"
+            except Exception:
+                error_msg = "分析過程中發生未知錯誤"
+            self._append_output(f"❌ 錯誤: {error_msg}")
+    
+    def _show_c3b_analysis_results_in_output(self, results: Dict[str, List[str]], scanner):
+        """在輸出視窗中顯示C3B分析結果"""
+        try:
+            # 取得統計資訊
+            stats = scanner.get_statistics()
+            
+            self._append_output("=== C3B分析結果 ===")
+            self._append_output(f"總共找到 {stats['total_c3b_files']} 個C3B檔案")
+            self._append_output(f"成功分析 {stats['analyzed_files']} 個檔案")
+            self._append_output(f"分析失敗 {stats['failed_scans']} 個檔案")
+            self._append_output(f"總共找到 {stats['total_referenced_files']} 個圖片引用")
+            
+            # 顯示每個C3B檔案的引用詳情
+            if results:
+                self._append_output("")
+                self._append_output("=== C3B檔案詳細引用 ===")
+                for c3b_file, referenced_files in results.items():
+                    self._append_output(f"\n📁 C3B檔案: {os.path.basename(c3b_file)}")
+                    self._append_output(f"   路徑: {c3b_file}")
+                    
+                    if referenced_files:
+                        self._append_output(f"   引用圖片 ({len(referenced_files)} 個):")
+                        for ref_file in referenced_files:
+                            self._append_output(f"     🖼️  {ref_file}")
+                    else:
+                        self._append_output("   ❌ 未找到圖片引用")
+            else:
+                self._append_output("❌ 未找到任何C3B檔案或引用的圖片")
+            
+        except Exception as e:
+            error_msg = str(e)
+            self._append_output(f"❌ 顯示結果時發生錯誤: {error_msg}")
+    
+    def _find_and_display_c3b_unused_files(self, results: Dict[str, List[str]], scanner):
+        """找出並顯示未被C3B檔案引用的圖片檔案"""
+        try:
+            # 進度 82% - 開始收集引用檔案
+            self._update_progress(82, "正在收集被引用的圖片檔案")
+            
+            # 收集所有被引用的圖片檔案路徑
+            referenced_files = set()
+            
+            # 從掃描結果中收集引用檔案
+            for c3b_file, ref_files in results.items():
+                c3b_dir = os.path.dirname(c3b_file)  # C3B檔案所在的目錄
+                
+                for ref_file in ref_files:
+                    # 嘗試找到檔案的完整路徑
+                    full_path = self._find_file_path_in_directory(ref_file, c3b_dir)
+                    if full_path:
+                        # 檢查引用檔案是否在同一個目錄下（或其子目錄）
+                        if self._is_in_same_directory_scope(c3b_file, full_path):
+                            referenced_files.add(full_path)
+                            self._append_output(f"🔍 找到同目錄引用圖片: {ref_file} -> {full_path}")
+                        else:
+                            self._append_output(f"⚠️  跨目錄引用（忽略）: {ref_file} -> {full_path}")
+                    else:
+                        # 如果在C3B檔案目錄找不到，嘗試在整個專案中找
+                        full_path = self._find_file_path(ref_file, self.selected_path.get())
+                        if full_path and self._is_in_same_directory_scope(c3b_file, full_path):
+                            referenced_files.add(full_path)
+                            self._append_output(f"🔍 找到引用圖片: {ref_file} -> {full_path}")
+                        else:
+                            self._append_output(f"⚠️  無法解析引用圖片或跨目錄: {ref_file}")
+            
+            # 進度 84% - 開始掃描專案檔案
+            self._update_progress(84, "正在掃描專案中的所有圖片檔案")
+            
+            # 掃描專案中的所有圖片檔案
+            all_files_in_project = set()
+            # 只關心PNG和JPG檔案
+            target_extensions = {'.png', '.jpg', '.jpeg'}
+            
+            for root, dirs, files in os.walk(self.selected_path.get()):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    file_ext = os.path.splitext(file)[1].lower()
+                    
+                    # 檢查是否為目標檔案類型
+                    if file_ext in target_extensions:
+                        all_files_in_project.add(file_path)
+            
+            # 進度 86% - 統計檔案數量
+            self._update_progress(86, "正在統計檔案數量")
+            
+            self._append_output(f"📊 專案中總共有 {len(all_files_in_project)} 個圖片檔案（PNG + JPG）")
+            self._append_output(f"📊 被引用的圖片檔案（同目錄範圍）: {len(referenced_files)} 個")
+            
+            # 進度 88% - 開始檢查未引用檔案
+            self._update_progress(88, "正在檢查未引用的圖片檔案")
+            
+            # 檢查是否需要進行Lua檔案分析
+            lua_analyzer = None
+            if self.code_project_path.get():
+                self._append_output("")
+                self._append_output("=== Lua檔案分析開始 ===")
+                self._append_output(f"程式碼專案路徑: {self.code_project_path.get()}")
+                self._update_progress(88.5, "正在分析Lua檔案中的圖片引用")
+                
+                try:
+                    from src.utils.lua_analyzer import LuaAnalyzer
+                    lua_analyzer = LuaAnalyzer(self.code_project_path.get())
+                    lua_image_refs = lua_analyzer.scan_lua_files()
+                    
+                    lua_stats = lua_analyzer.get_statistics()
+                    self._append_output(f"📊 Lua檔案分析完成: 掃描 {lua_stats['total_lua_files']} 個檔案，找到 {lua_stats['total_image_references']} 個圖片引用")
+                    
+                    if lua_image_refs:
+                        self._append_output("🔍 在Lua檔案中找到的圖片引用:")
+                        for ref in sorted(lua_image_refs):
+                            self._append_output(f"     🖼️  {ref}")
+                    else:
+                        self._append_output("⚠️  未在Lua檔案中找到任何圖片引用")
+                        
+                except Exception as e:
+                    self._append_output(f"❌ Lua檔案分析時發生錯誤: {str(e)}")
+                    lua_analyzer = None
+                
+                self._append_output("")
+            
+            # 檢查未引用檔案
+            unused_files = []
+            total_files = len(all_files_in_project)
+            processed_files = 0
+            
+            for file_path in all_files_in_project:
+                processed_files += 1
+                
+                # 計算檢查階段的細粒度進度（88%-90%之間）
+                check_progress = 88.0 + (processed_files / total_files) * 2.0  # 2%的進度範圍
+                if processed_files % 10 == 0:  # 每10個檔案更新一次進度，避免過於頻繁
+                    self._update_progress(check_progress, f"檢查檔案 ({processed_files}/{total_files})")
+                    self.root.update_idletasks()
+                
+                is_referenced = False
+                
+                # 檢查是否在引用檔案列表中
+                if file_path in referenced_files:
+                    is_referenced = True
+                else:
+                    # 進一步檢查檔案名匹配
+                    file_name = os.path.basename(file_path)
+                    
+                    for ref_path in referenced_files:
+                        if os.path.basename(ref_path).lower() == file_name.lower():
+                            # 檢查是否在相同的目錄範圍內
+                            if self._is_in_same_directory_scope(file_path, ref_path):
+                                is_referenced = True
+                                break
+                    
+                    # 檢查相對路徑是否被引用
+                    if not is_referenced:
+                        relative_path = os.path.relpath(file_path, self.selected_path.get())
+                        for c3b_file, ref_files_list in results.items():
+                            c3b_dir = os.path.dirname(c3b_file)
+                            for ref_file in ref_files_list:
+                                if ref_file.replace('\\', '/').lower() == relative_path.replace('\\', '/').lower():
+                                    # 檢查是否在同一個目錄範圍
+                                    if self._is_in_same_directory_scope(c3b_file, file_path):
+                                        is_referenced = True
+                                        break
+                            if is_referenced:
+                                break
+                
+                # 如果還沒有被引用，且有Lua分析器，則檢查Lua檔案中的引用
+                if not is_referenced and lua_analyzer:
+                    if lua_analyzer.check_if_file_referenced_in_lua(os.path.basename(file_path), file_path):
+                        is_referenced = True
+                        self._append_output(f"  ✅ 檔案 {os.path.basename(file_path)} 在Lua檔案中被引用，排除未引用列表")
+                
+                if not is_referenced:
+                    unused_files.append(file_path)
+            
+            if unused_files:
+                self._append_output("")
+                self._append_output("=== 未引用圖片檔案列表 ===")
+                
+                # 根據是否有Lua檢查來調整描述
+                if lua_analyzer:
+                    self._append_output(f"找到 {len(unused_files)} 個未被C3B檔案和Lua程式碼引用的圖片:")
+                    self._append_output("(已排除在C3B檔案和Lua檔案中被引用的圖片)")
+                else:
+                    self._append_output(f"找到 {len(unused_files)} 個未被C3B檔案引用的圖片:")
+                    self._append_output("(僅檢查C3B檔案引用，未檢查程式碼引用)")
+                
+                # 檢查GUI元件是否已初始化
+                if not hasattr(self, 'unused_listbox'):
+                    self._append_output("⚠️  GUI元件尚未初始化，無法顯示檔案列表")
+                    self._append_output("請重新啟動應用程式")
+                    return
+                
+                if not self.unused_listbox.winfo_exists():
+                    self._append_output("⚠️  GUI框架不存在，無法顯示檔案列表")
+                    self._append_output("請重新啟動應用程式")
+                    return
+                
+                # 更新狀態標籤
+                if hasattr(self, 'status_label'):
+                    self.status_label.config(
+                        text=f"未引用檔案列表 (正在添加 {len(unused_files)} 個檔案...)",
+                        foreground="blue"
+                    )
+                
+                # 將未引用檔案加入GUI列表
+                added_count = 0
+                total_unused = len(unused_files)
+                for i, file_path in enumerate(unused_files, 1):
+                    try:
+                        print(f"正在添加檔案到GUI: {file_path}")
+                        self._add_unused_file(file_path)
+                        self._append_output(f"  📄 {file_path}")
+                        added_count += 1
+                        
+                        # 顯示添加進度（89%-90%之間）
+                        if i % 5 == 0 or i == total_unused:  # 每5個檔案或最後一個檔案更新進度
+                            add_progress = 89.0 + (i / total_unused) * 1.0  # 1%的進度範圍
+                            self._update_progress(add_progress, f"添加檔案到列表 ({i}/{total_unused})")
+                        
+                        # 強制更新GUI
+                        self.root.update()
+                        self.root.after(50)  # 等待50毫秒
+                        
+                    except Exception as e:
+                        self._append_output(f"  ❌ 添加檔案到列表失敗: {file_path} - {str(e)}")
+                        print(f"添加檔案失敗: {str(e)}")
+                
+                self._append_output(f"✅ 成功添加 {added_count} 個檔案到列表")
+                
+                # 最終狀態更新
+                if hasattr(self, 'status_label'):
+                    self.status_label.config(
+                        text=f"未引用檔案列表 (找到 {added_count} 個檔案)",
+                        foreground="black"
+                    )
+                
+                # 最終強制更新GUI
+                self.root.update()
+                self.root.after(200)  # 等待200毫秒確保完全更新
+                
+                self._append_output("")
+                self._append_output("您可以使用上方的checkbox選擇檔案，或使用刪除按鈕進行操作")
+            else:
+                self._append_output("")
+                self._append_output("✅ 沒有找到未引用的圖片檔案")
+                
+                # 更新狀態標籤
+                if hasattr(self, 'status_label'):
+                    self.status_label.config(
+                        text="未引用檔案列表 (沒有找到未引用檔案)",
+                        foreground="green"
+                    )
+            
+            # 進度 90% - 未引用檔案查找完成
+            self._update_progress(90, "未引用檔案查找完成")
+                
+        except Exception as e:
+            self._append_output(f"❌ 搜尋未引用圖片檔案時發生錯誤: {str(e)}")
+            import traceback
+            traceback.print_exc()
     
  
