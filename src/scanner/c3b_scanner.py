@@ -13,7 +13,7 @@ from typing import Dict, List, Set, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from c3b_parser import C3BParser
+from tools.c3b_parser import C3BParser
 from src.utils.logger import ScannerLogger
 
 
