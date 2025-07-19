@@ -28,9 +28,57 @@ class MainWindow:
         # 設定UI
         self._setup_ui()
         
+        # 設定進度條樣式為綠色
+        self._setup_progress_style()
+        
         # 確保視窗被正確顯示
         self.root.update()
         self.root.deiconify()  # 確保視窗可見
+    
+    def _setup_progress_style(self):
+        """設定進度條樣式為綠色"""
+        try:
+            self.style = ttk.Style()
+            
+            # 嘗試不同的主題來支援自訂顏色
+            available_themes = self.style.theme_names()
+            print(f"可用主題: {available_themes}")
+            
+            # 優先選擇支援自訂顏色的主題
+            if 'alt' in available_themes:
+                self.style.theme_use('alt')
+            elif 'clam' in available_themes:
+                self.style.theme_use('clam')
+            elif 'default' in available_themes:
+                self.style.theme_use('default')
+            
+            # 設定綠色進度條樣式
+            self.style.configure("Green.Horizontal.TProgressbar",
+                          background='#4CAF50',      # 進度條填充顏色（綠色）
+                          troughcolor='#E8E8E8',     # 背景軌道顏色（淺灰）
+                          borderwidth=1,
+                          lightcolor='#66BB6A',      # 高亮顏色（淺綠）
+                          darkcolor='#2E7D32',       # 陰影顏色（深綠）
+                          focuscolor='#4CAF50')      # 焦點顏色
+            
+            # 設定進度條狀態樣式
+            self.style.map("Green.Horizontal.TProgressbar",
+                          background=[('active', '#66BB6A'),    # 活動狀態
+                                    ('disabled', '#CCCCCC')])   # 禁用狀態
+            
+            print(f"已設定綠色進度條樣式")
+            
+        except Exception as e:
+            print(f"設定進度條樣式時發生錯誤: {str(e)}")
+    
+    def _apply_progress_style(self):
+        """應用綠色樣式到進度條"""
+        try:
+            if hasattr(self, 'progress_bar') and hasattr(self, 'style'):
+                self.progress_bar.configure(style="Green.Horizontal.TProgressbar")
+                print(f"已應用綠色樣式到進度條")
+        except Exception as e:
+            print(f"應用進度條樣式時發生錯誤: {str(e)}")
     
     def _setup_ui(self):
         """設定UI元件"""
@@ -83,13 +131,26 @@ class MainWindow:
         unused_frame = ttk.LabelFrame(main_frame, text="未引用檔案列表", padding="10")
         unused_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 10))
         
-        # 進度條
-        self.progress_bar = ttk.Progressbar(
-            unused_frame,
-            mode='indeterminate',
-            length=200
+        # 自訂綠色進度條 - 使用 Canvas 確保顏色正確
+        self.progress_frame = tk.Frame(unused_frame, height=25, bg='white')
+        self.progress_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        self.progress_frame.grid_propagate(False)
+        
+        self.progress_canvas = tk.Canvas(
+            self.progress_frame,
+            height=20,
+            bg='#E8E8E8',  # 淺灰色背景
+            highlightthickness=1,
+            highlightbackground='#CCCCCC'
         )
-        self.progress_bar.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        self.progress_canvas.pack(fill='both', expand=True, padx=2, pady=2)
+        
+        # 初始化進度條變數
+        self.progress_value = 0
+        self.progress_max = 100
+        
+        # 綁定畫布大小改變事件
+        self.progress_canvas.bind('<Configure>', self._on_progress_canvas_configure)
         
         # 狀態標籤
         self.status_label = ttk.Label(
@@ -666,7 +727,7 @@ class MainWindow:
         from src.scanner.efk_scanner import EFKScanner
         
         try:
-            # 開始進度條
+            # 開始進度條 - 0%
             self._start_progress("正在準備分析...")
             
             # 清除輸出視窗和未引用檔案列表
@@ -676,8 +737,8 @@ class MainWindow:
             self._append_output(f"掃描路徑: {self.selected_path.get()}")
             self._append_output("")
             
-            # 更新狀態
-            self._update_status("正在初始化掃描器...", "blue")
+            # 進度 10% - 初始化掃描器
+            self._update_progress(10, "正在初始化掃描器")
             
             # 使用預設的圖片類型集合
             default_image_types = {"png", "jpg", "jpeg", "tga", "dds", "bmp", "tiff", "tif", "webp", "ktx", "pvr"}
@@ -688,25 +749,25 @@ class MainWindow:
             self._append_output("請稍候，分析進行中...")
             self._append_output("")
             
-            # 更新狀態
-            self._update_status("正在掃描EFK檔案...", "blue")
+            # 進度 30% - 開始掃描EFK檔案
+            self._update_progress(30, "正在掃描EFK檔案")
             
             # 執行掃描
             results = scanner.scan_efk_files()
             
-            # 更新狀態
-            self._update_status("正在處理掃描結果...", "blue")
+            # 進度 60% - 處理掃描結果
+            self._update_progress(60, "正在處理掃描結果")
             
             # 顯示結果
             self._show_analysis_results_in_output(results, scanner)
             
-            # 更新狀態
-            self._update_status("正在查找未引用檔案...", "blue")
+            # 進度 80% - 查找未引用檔案
+            self._update_progress(80, "正在查找未引用檔案")
             
             # 找出未引用的檔案
             self._find_and_display_unused_files(results, scanner)
             
-            # 停止進度條
+            # 進度 100% - 分析完成
             self._stop_progress("分析完成")
             
         except KeyboardInterrupt:
@@ -1374,18 +1435,82 @@ class MainWindow:
             messagebox.showerror("錯誤", f"無法取得檔案資訊: {str(e)}")
     
     def _start_progress(self, message: str = "處理中..."):
-        """開始進度條動畫"""
-        if hasattr(self, 'progress_bar') and self.progress_bar.winfo_exists():
-            self.progress_bar.start(10)
+        """開始進度條 - 重置為0%"""
+        self.progress_value = 0
+        self._draw_progress()
         if hasattr(self, 'status_label') and self.status_label.winfo_exists():
             self.status_label.config(text=message, foreground="blue")
     
+    def _update_progress(self, value: float, message: str = ""):
+        """更新進度條值 (0-100)"""
+        self.progress_value = min(max(value, 0), 100)  # 確保值在0-100範圍內
+        self._draw_progress()
+        if message and hasattr(self, 'status_label') and self.status_label.winfo_exists():
+            percentage = min(max(value, 0), 100)
+            display_message = f"{message} ({percentage:.1f}%)"
+            self.status_label.config(text=display_message, foreground="blue")
+    
     def _stop_progress(self, message: str = "完成"):
-        """停止進度條動畫"""
-        if hasattr(self, 'progress_bar') and self.progress_bar.winfo_exists():
-            self.progress_bar.stop()
+        """完成進度條 - 設為100%"""
+        self.progress_value = 100
+        self._draw_progress()
         if hasattr(self, 'status_label') and self.status_label.winfo_exists():
             self.status_label.config(text=message, foreground="green")
+    
+    def _draw_progress(self):
+        """繪製自訂的綠色進度條"""
+        try:
+            if hasattr(self, 'progress_canvas') and self.progress_canvas.winfo_exists():
+                # 清除畫布
+                self.progress_canvas.delete("all")
+                
+                # 獲取畫布尺寸
+                canvas_width = self.progress_canvas.winfo_width()
+                canvas_height = self.progress_canvas.winfo_height()
+                
+                # 如果畫布還沒有渲染，使用預設尺寸
+                if canvas_width <= 1:
+                    canvas_width = 300
+                    canvas_height = 20
+                
+                # 計算進度條寬度
+                progress_width = int((self.progress_value / self.progress_max) * canvas_width)
+                
+                # 繪製背景（灰色軌道）
+                self.progress_canvas.create_rectangle(
+                    0, 0, canvas_width, canvas_height,
+                    fill='#E8E8E8', outline='#CCCCCC', width=1
+                )
+                
+                # 繪製進度（綠色填充）
+                if progress_width > 0:
+                    self.progress_canvas.create_rectangle(
+                        0, 0, progress_width, canvas_height,
+                        fill='#4CAF50', outline='#4CAF50', width=0
+                    )
+                
+                # 添加漸層效果（可選）
+                if progress_width > 2:
+                    # 頂部高亮
+                    self.progress_canvas.create_rectangle(
+                        0, 0, progress_width, 2,
+                        fill='#66BB6A', outline='#66BB6A', width=0
+                    )
+                    # 底部陰影
+                    self.progress_canvas.create_rectangle(
+                        0, canvas_height-2, progress_width, canvas_height,
+                        fill='#388E3C', outline='#388E3C', width=0
+                    )
+                
+                # 強制更新畫布
+                self.progress_canvas.update()
+                
+        except Exception as e:
+            print(f"繪製進度條時發生錯誤: {str(e)}")
+    
+    def _on_progress_canvas_configure(self, event):
+        """當進度條畫布大小改變時重新繪製"""
+        self._draw_progress()
     
     def _update_status(self, message: str, color: str = "black"):
         """更新狀態標籤"""
