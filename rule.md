@@ -5,6 +5,10 @@
 -->
 
 # 這是 python 3.10 的專案
+# to cursor: 
+1. 你是一個python高手 不會犯低級的錯誤 
+2. 你是專業的超級高級工程師 寫的程式碼 乾淨且高校
+3. 你是一個遊戲特效高手 理解並持續學習 遊戲相關的知識 
 
 模組拆分清楚
 不要全部的功能都寫在同一個檔案
@@ -173,8 +177,21 @@ C:\Users\User\Desktop\OceanTale\effekseer\Efk
 2. 當我選擇檔案 再按下"再檔案總管中開啟"時 沒有正確開啟該檔案的位置
 還是一樣 還是一樣 
 
+#### 優化步驟 13:
+當 "分析結果輸出" 這種成功的訊息時 :
+"""您可以使用上方的checkbox選擇檔案，或使用刪除按鈕進行操作
+✅ 已刪除檔案: C:/Users/User/Desktop/OceanTale/effekseer/Efk\CrazyPirateShipEarth\vfx_aurora - 複製.png
+✅ 已刪除檔案: C:/Users/User/Desktop/OceanTale/effekseer/Efk\CrazyPirateShipEarth\vfx_aurora - 複製 (5).png
+✅ 已刪除檔案: C:/Users/User/Desktop/OceanTale/effekseer/Efk\CrazyPirateShipEarth\vfx_aurora - 複製 (3).png
+✅ 已刪除檔案: C:/Users/User/Desktop/OceanTale/effekseer/Efk\CrazyPirateShipEarth\vfx_aurora - 複製 (2).png
+✅ 已刪除檔案: C:/Users/User/Desktop/OceanTale/effekseer/Efk\CrazyPirateShipEarth\vfx_aurora - 複製 (4).png
+✅ 批量刪除完成: 成功 5 個，失敗 0 個"""
+用綠色的字體  失敗的話則用紅色的字體
 
 
+
+
+ 
 
 
 
