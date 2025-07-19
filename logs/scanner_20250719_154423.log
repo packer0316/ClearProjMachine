@@ -1,0 +1,110 @@
+2025-07-19 15:44:23,463 - INFO - 開始掃描專案: C:\Users\User\Desktop\OceanTale\effekseer\Efk
+2025-07-19 15:44:23,463 - INFO - 找到 35 個EFK檔案, 14 個EFKMAT檔案, 4 個EFKMODEL檔案
+2025-07-19 15:44:23,463 - INFO - 分析EFK檔案 1/35: Attack.efk
+2025-07-19 15:44:23,464 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,464 - INFO - 分析EFK檔案 2/35: Aurora.efk
+2025-07-19 15:44:23,465 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,465 - INFO - 分析EFK檔案 3/35: EarthGlow.efk
+2025-07-19 15:44:23,465 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,466 - INFO - 分析EFK檔案 4/35: Explosion.efk
+2025-07-19 15:44:23,466 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,466 - INFO - 分析EFK檔案 5/35: Aurora.efk
+2025-07-19 15:44:23,468 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,468 - INFO - 分析EFK檔案 6/35: EarthGlow.efk
+2025-07-19 15:44:23,469 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,469 - INFO - 分析EFK檔案 7/35: MantisShrimpAccumulate_1_BgFire.efk
+2025-07-19 15:44:23,469 - INFO - 成功解析EFK檔案，找到 3 個引用
+2025-07-19 15:44:23,469 - INFO - 分析EFK檔案 8/35: MantisShrimpAccumulate_1_EnergyBall.efk
+2025-07-19 15:44:23,469 - INFO - 成功解析EFK檔案，找到 4 個引用
+2025-07-19 15:44:23,469 - INFO - 分析EFK檔案 9/35: MantisShrimpAccumulate_1_EnergyLine.efk
+2025-07-19 15:44:23,470 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,470 - INFO - 分析EFK檔案 10/35: MantisShrimpAccumulate_2_BgFire.efk
+2025-07-19 15:44:23,470 - INFO - 成功解析EFK檔案，找到 3 個引用
+2025-07-19 15:44:23,470 - INFO - 分析EFK檔案 11/35: MantisShrimpAccumulate_2_EnergyBall.efk
+2025-07-19 15:44:23,471 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,471 - INFO - 分析EFK檔案 12/35: MantisShrimpAccumulate_2_EnergyLine.efk
+2025-07-19 15:44:23,471 - INFO - 成功解析EFK檔案，找到 4 個引用
+2025-07-19 15:44:23,471 - INFO - 分析EFK檔案 13/35: MantisShrimpBump.efk
+2025-07-19 15:44:23,472 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,472 - INFO - 分析EFK檔案 14/35: MantisShrimpFlash.efk
+2025-07-19 15:44:23,472 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,472 - INFO - 分析EFK檔案 15/35: MantisShrimpHit_1.efk
+2025-07-19 15:44:23,473 - INFO - 成功解析EFK檔案，找到 7 個引用
+2025-07-19 15:44:23,473 - INFO - 分析EFK檔案 16/35: MantisShrimpHit_2.efk
+2025-07-19 15:44:23,474 - INFO - 成功解析EFK檔案，找到 4 個引用
+2025-07-19 15:44:23,474 - INFO - 分析EFK檔案 17/35: MantisShrimpLight.efk
+2025-07-19 15:44:23,474 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,474 - INFO - 分析EFK檔案 18/35: MantisShrimpProvoke.efk
+2025-07-19 15:44:23,476 - INFO - 成功解析EFK檔案，找到 3 個引用
+2025-07-19 15:44:23,476 - INFO - 分析EFK檔案 19/35: MantisShrimpPunch_1.efk
+2025-07-19 15:44:23,477 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,477 - INFO - 分析EFK檔案 20/35: MantisShrimpRipple.efk
+2025-07-19 15:44:23,477 - INFO - 成功解析EFK檔案，找到 3 個引用
+2025-07-19 15:44:23,477 - INFO - 分析EFK檔案 21/35: AngryMask.efk
+2025-07-19 15:44:23,477 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,477 - INFO - 分析EFK檔案 22/35: angryMaskFast.efk
+2025-07-19 15:44:23,478 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,478 - INFO - 分析EFK檔案 23/35: angryMaskLong.efk
+2025-07-19 15:44:23,478 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,478 - INFO - 分析EFK檔案 24/35: Attack_big_1.efk
+2025-07-19 15:44:23,479 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,479 - INFO - 分析EFK檔案 25/35: Attack_big_2.efk
+2025-07-19 15:44:23,479 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,479 - INFO - 分析EFK檔案 26/35: Attack_big_3.efk
+2025-07-19 15:44:23,479 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,479 - INFO - 分析EFK檔案 27/35: Attack_big_4.efk
+2025-07-19 15:44:23,480 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,480 - INFO - 分析EFK檔案 28/35: Attack_big_5.efk
+2025-07-19 15:44:23,480 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,480 - INFO - 分析EFK檔案 29/35: Attack_big_6.efk
+2025-07-19 15:44:23,480 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,480 - INFO - 分析EFK檔案 30/35: Attack_big_full.efk
+2025-07-19 15:44:23,481 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,482 - INFO - 分析EFK檔案 31/35: Attack_small.efk
+2025-07-19 15:44:23,482 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,482 - INFO - 分析EFK檔案 32/35: Lightning.efk
+2025-07-19 15:44:23,482 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,482 - INFO - 分析EFK檔案 33/35: LightningFast.efk
+2025-07-19 15:44:23,483 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,483 - INFO - 分析EFK檔案 34/35: LightningSlow.efk
+2025-07-19 15:44:23,483 - INFO - 成功解析EFK檔案，找到 5 個引用
+2025-07-19 15:44:23,484 - INFO - 分析EFK檔案 35/35: WaterSkiing.efk
+2025-07-19 15:44:23,484 - WARNING - EFK檔案解析完成，但未找到引用
+2025-07-19 15:44:23,484 - INFO - 分析EFKMAT檔案 1/14: Aurora.efkmat
+2025-07-19 15:44:23,490 - INFO - 成功解析EFKMAT檔案，找到 1 個引用
+2025-07-19 15:44:23,490 - INFO - 分析EFKMAT檔案 2/14: cannon_dissolve_3.efkmat
+2025-07-19 15:44:23,493 - INFO - 成功解析EFKMAT檔案，找到 2 個引用
+2025-07-19 15:44:23,493 - INFO - 分析EFKMAT檔案 3/14: Dissolve_04.efkmat
+2025-07-19 15:44:23,494 - INFO - 成功解析EFKMAT檔案，找到 2 個引用
+2025-07-19 15:44:23,494 - INFO - 分析EFKMAT檔案 4/14: Aurora.efkmat
+2025-07-19 15:44:23,500 - INFO - 成功解析EFKMAT檔案，找到 1 個引用
+2025-07-19 15:44:23,500 - INFO - 分析EFKMAT檔案 5/14: Explosion_Floor.efkmat
+2025-07-19 15:44:23,502 - INFO - 成功解析EFKMAT檔案，找到 2 個引用
+2025-07-19 15:44:23,503 - INFO - 分析EFKMAT檔案 6/14: FocusMAsk.efkmat
+2025-07-19 15:44:23,504 - WARNING - EFKMAT檔案解析完成，但未找到引用
+2025-07-19 15:44:23,504 - INFO - 分析EFKMAT檔案 7/14: lightning_01_dissolve.efkmat
+2025-07-19 15:44:23,508 - INFO - 成功解析EFKMAT檔案，找到 3 個引用
+2025-07-19 15:44:23,508 - INFO - 分析EFKMAT檔案 8/14: Shape_flow_tail_01.efkmat
+2025-07-19 15:44:23,511 - INFO - 成功解析EFKMAT檔案，找到 1 個引用
+2025-07-19 15:44:23,511 - INFO - 分析EFKMAT檔案 9/14: Shape_flow_tail_01_disslove.efkmat
+2025-07-19 15:44:23,514 - INFO - 成功解析EFKMAT檔案，找到 2 個引用
+2025-07-19 15:44:23,515 - INFO - 分析EFKMAT檔案 10/14: Slime_Track.efkmat
+2025-07-19 15:44:23,517 - INFO - 成功解析EFKMAT檔案，找到 2 個引用
+2025-07-19 15:44:23,517 - INFO - 分析EFKMAT檔案 11/14: Stationmaster_ring_2.efkmat
+2025-07-19 15:44:23,520 - INFO - 成功解析EFKMAT檔案，找到 1 個引用
+2025-07-19 15:44:23,520 - INFO - 分析EFKMAT檔案 12/14: FocusMAsk.efkmat
+2025-07-19 15:44:23,521 - WARNING - EFKMAT檔案解析完成，但未找到引用
+2025-07-19 15:44:23,521 - INFO - 分析EFKMAT檔案 13/14: lightning_01.efkmat
+2025-07-19 15:44:23,524 - INFO - 成功解析EFKMAT檔案，找到 2 個引用
+2025-07-19 15:44:23,524 - INFO - 分析EFKMAT檔案 14/14: Shape_flow_tail_01_dissolve_h.efkmat
+2025-07-19 15:44:23,526 - INFO - 成功解析EFKMAT檔案，找到 1 個引用
+2025-07-19 15:44:23,526 - INFO - 分析EFKMODEL檔案 1/4: Aurora_Path.efkmodel
+2025-07-19 15:44:23,532 - WARNING - EFKMODEL檔案解析完成，但未找到引用
+2025-07-19 15:44:23,532 - INFO - 分析EFKMODEL檔案 2/4: Aurora_Path.efkmodel
+2025-07-19 15:44:23,536 - WARNING - EFKMODEL檔案解析完成，但未找到引用
+2025-07-19 15:44:23,536 - INFO - 分析EFKMODEL檔案 3/4: Aurora_Path_01.efkmodel
+2025-07-19 15:44:23,539 - WARNING - EFKMODEL檔案解析完成，但未找到引用
+2025-07-19 15:44:23,539 - INFO - 分析EFKMODEL檔案 4/4: Blade.efkmodel
+2025-07-19 15:44:23,543 - WARNING - EFKMODEL檔案解析完成，但未找到引用
+2025-07-19 15:44:23,543 - INFO - 掃描摘要 - 總檔案數: 53, 成功: 53, 失敗: 0
+2025-07-19 15:44:23,543 - INFO - 掃描完成，總共解析出 27 個有效結果
