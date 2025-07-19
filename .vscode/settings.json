@@ -1,0 +1,56 @@
+{
+    "editor.tokenColorCustomizations": {
+    "textMateRules": [
+        {
+        "scope": "markup.heading.markdown",
+        "settings": {
+            "fontStyle": "bold",
+            "foreground": "#e74c3c" // 所有標題（共用紅色）
+        }
+        },
+        {
+        "scope": "markup.heading.markdown punctuation.definition.heading.markdown",
+        "settings": {
+            "foreground": "#e67e22" // # 符號顏色
+        }
+        },
+        {
+        "scope": "heading.1.markdown",
+        "settings": {
+            "foreground": "#e74c3c"
+        }
+        },
+        {
+        "scope": "heading.2.markdown",
+        "settings": {
+            "foreground": "#2980b9"
+        }
+        },
+        {
+        "scope": "heading.3.markdown",
+        "settings": {
+            "foreground": "#27ae60"
+        }
+        },
+        {
+        "scope": "heading.4.markdown",
+        "settings": {
+            "foreground": "#d469f5"
+        }
+        },
+        {
+        "scope": "heading.5.markdown",
+        "settings": {
+            "foreground": "#f39c12"
+        }
+        },
+        {
+        "scope": "heading.6.markdown",
+        "settings": {
+            "foreground": "#7f8c8d"
+        }
+        }
+    ]
+    }
+}
+
