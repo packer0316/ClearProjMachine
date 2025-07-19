@@ -25,6 +25,13 @@ class MainWindow:
         self.file_checkboxes = {}
         self.file_labels = {}
         
+        # 新增統計追蹤變數
+        self.total_unused_count = 0
+        self.total_unused_size = 0
+        self.remaining_count = 0
+        self.remaining_size = 0
+        self.deleted_files = set()
+        
         # 設定UI
         self._setup_ui()
         
@@ -208,6 +215,28 @@ class MainWindow:
         )
         self.open_in_explorer_button.grid(row=0, column=2)
         
+        # 統計資訊框架 - 在按鈕下方
+        stats_frame = ttk.Frame(unused_frame)
+        stats_frame.grid(row=4, column=0, columnspan=2, pady=(10, 0), sticky=(tk.W, tk.E))
+        
+        # 統計標籤
+        self.stats_label = ttk.Label(
+            stats_frame,
+            text="統計資訊：等待分析...",
+            font=("Consolas", 9),
+            foreground="gray"
+        )
+        self.stats_label.grid(row=0, column=0, sticky="w")
+        
+        # 選中檔案統計標籤
+        self.selection_stats_label = ttk.Label(
+            stats_frame,
+            text="",
+            font=("Consolas", 9),
+            foreground="blue"
+        )
+        self.selection_stats_label.grid(row=1, column=0, sticky="w")
+        
         # 輸出視窗區域
         output_frame = ttk.LabelFrame(main_frame, text="分析結果輸出", padding="10")
         output_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
@@ -367,6 +396,13 @@ class MainWindow:
             if hasattr(self, 'file_delete_buttons'):
                 self.file_delete_buttons = {}
             
+            # 重置統計變數
+            self.total_unused_count = 0
+            self.total_unused_size = 0
+            self.remaining_count = 0
+            self.remaining_size = 0
+            self.deleted_files = set()
+            
             # 禁用全部清除按鈕
             if hasattr(self, 'clear_all_button') and self.clear_all_button.winfo_exists():
                 self.clear_all_button.config(state="disabled")
@@ -385,6 +421,16 @@ class MainWindow:
                     text="未引用檔案列表 (等待分析...)",
                     foreground="gray"
                 )
+            
+            # 重置統計標籤
+            if hasattr(self, 'stats_label') and self.stats_label.winfo_exists():
+                self.stats_label.config(
+                    text="統計資訊：等待分析...",
+                    foreground="gray"
+                )
+            
+            if hasattr(self, 'selection_stats_label') and self.selection_stats_label.winfo_exists():
+                self.selection_stats_label.config(text="")
                 
         except Exception as e:
             print(f"清除未引用檔案列表時發生錯誤: {str(e)}")
@@ -437,6 +483,9 @@ class MainWindow:
                     foreground="black"
                 )
             
+            # 更新統計資訊
+            self._update_stats_display()
+            
             # 添加調試信息
             print(f"=== 檔案項目調試信息 ===")
             print(f"檔案路徑: {file_path}")
@@ -463,9 +512,13 @@ class MainWindow:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 
+                # 將檔案標記為已刪除
+                self.deleted_files.add(file_path)
+                
                 # 檢查GUI元件是否已經初始化
                 if not hasattr(self, 'unused_listbox') or not self.unused_listbox.winfo_exists():
                     self._append_output(f"✅ 已刪除檔案: {file_path}")
+                    self._update_stats_display()
                     return
                 
                 # 將檔案項目變為灰色並加上刪除線效果
@@ -501,6 +554,11 @@ class MainWindow:
                     self.file_delete_buttons[file_path].config(state="disabled")
                 
                 self._append_output(f"✅ 已刪除檔案: {file_path}")
+                
+                # 更新統計資訊
+                self._update_stats_display()
+                self._update_selection_stats()
+                
             else:
                 self._append_output(f"❌ 檔案不存在: {file_path}")
         except Exception as e:
@@ -546,6 +604,9 @@ class MainWindow:
                     deleted_count += 1
                     self._append_output(f"✅ 已刪除檔案: {file_path}")
                     
+                    # 將檔案標記為已刪除
+                    self.deleted_files.add(file_path)
+                    
                     # 只有在GUI已初始化的情況下才更新UI
                     if hasattr(self, 'unused_listbox') and self.unused_listbox.winfo_exists():
                         try:
@@ -562,6 +623,10 @@ class MainWindow:
                 self._append_output(f"❌ 刪除檔案失敗: {file_path} - {str(e)}")
         
         self._append_output(f"✅ 批量刪除完成: 成功 {deleted_count} 個，失敗 {failed_count} 個")
+        
+        # 更新統計資訊
+        self._update_stats_display()
+        self._update_selection_stats()
     
     def _update_deleted_file_display(self, file_path: str):
         """更新已刪除檔案在Listbox中的顯示"""
@@ -602,6 +667,10 @@ class MainWindow:
                     pass
                 
                 print(f"已更新檔案顯示: {file_path} (索引: {file_index})")
+                
+                # 更新統計資訊
+                self._update_stats_display()
+                self._update_selection_stats()
             
         except Exception as e:
             print(f"更新刪除檔案顯示時發生錯誤: {str(e)}")
@@ -624,6 +693,10 @@ class MainWindow:
                     self.unused_listbox.selection_clear(0, tk.END)
                     for index in valid_selection:
                         self.unused_listbox.selection_set(index)
+            
+            # 更新選擇統計資訊
+            self._update_selection_stats()
+            
         except Exception as e:
             print(f"處理Listbox選擇事件時發生錯誤: {str(e)}")
     
@@ -656,6 +729,9 @@ class MainWindow:
                     deleted_count += 1
                     self._append_output(f"✅ 已刪除檔案: {file_path}")
                     
+                    # 將檔案標記為已刪除
+                    self.deleted_files.add(file_path)
+                    
                     # 只有在GUI已初始化的情況下才更新UI
                     if gui_initialized:
                         try:
@@ -672,6 +748,14 @@ class MainWindow:
                 self._append_output(f"❌ 刪除檔案失敗: {file_path} - {str(e)}")
         
         self._append_output(f"✅ 批量刪除完成: 成功 {deleted_count} 個，失敗 {failed_count} 個")
+        
+        # 更新統計資訊
+        self._update_stats_display()
+        self._update_selection_stats()
+        
+        # 更新統計資訊
+        self._update_stats_display()
+        self._update_selection_stats()
     
     def _find_unused_files(self, referenced_files: Set[str], project_path: str) -> List[str]:
         """找出未被引用的檔案"""
@@ -1267,6 +1351,114 @@ class MainWindow:
             return f"{size_bytes / (1024 * 1024):.1f} MB"
         else:
             return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+    
+    def _get_file_size(self, file_path: str) -> int:
+        """獲取檔案大小（位元組）"""
+        try:
+            if os.path.exists(file_path):
+                return os.path.getsize(file_path)
+            else:
+                return 0
+        except Exception:
+            return 0
+    
+    def _calculate_total_stats(self):
+        """計算總統計資訊"""
+        try:
+            self.total_unused_count = len(self.unused_files)
+            self.total_unused_size = 0
+            self.remaining_count = 0
+            self.remaining_size = 0
+            
+            for file_path in self.unused_files:
+                file_size = self._get_file_size(file_path)
+                self.total_unused_size += file_size
+                
+                # 如果檔案未被刪除，計入剩餘統計
+                if file_path not in self.deleted_files:
+                    self.remaining_count += 1
+                    self.remaining_size += file_size
+                    
+        except Exception as e:
+            print(f"計算統計資訊時發生錯誤: {str(e)}")
+    
+    def _update_stats_display(self):
+        """更新統計資訊顯示"""
+        try:
+            if not hasattr(self, 'stats_label') or not self.stats_label.winfo_exists():
+                return
+                
+            # 計算最新統計
+            self._calculate_total_stats()
+            
+            # 格式化統計文字
+            total_size_text = self._format_file_size(self.total_unused_size)
+            remaining_size_text = self._format_file_size(self.remaining_size)
+            deleted_count = self.total_unused_count - self.remaining_count
+            
+            stats_text = (
+                f"統計：總數 {self.total_unused_count} 個 ({total_size_text}) | "
+                f"剩餘 {self.remaining_count} 個 ({remaining_size_text}) | "
+                f"已刪除 {deleted_count} 個"
+            )
+            
+            self.stats_label.config(text=stats_text, foreground="black")
+            
+        except Exception as e:
+            print(f"更新統計顯示時發生錯誤: {str(e)}")
+    
+    def _update_selection_stats(self):
+        """更新選中檔案統計資訊"""
+        try:
+            if not hasattr(self, 'selection_stats_label') or not self.selection_stats_label.winfo_exists():
+                return
+                
+            if not hasattr(self, 'unused_listbox') or not self.unused_listbox.winfo_exists():
+                return
+                
+            selected_indices = self.unused_listbox.curselection()
+            
+            if not selected_indices:
+                self.selection_stats_label.config(text="")
+                return
+            
+            selected_count = 0
+            selected_size = 0
+            valid_selections = []
+            
+            for index in selected_indices:
+                try:
+                    file_path = self.unused_listbox.get(index)
+                    
+                    # 跳過已刪除的檔案（檢查檔案路徑是否包含已刪除標記）
+                    if "🗑️ [已刪除]" in file_path:
+                        continue
+                        
+                    # 檢查檔案是否在已刪除列表中
+                    original_path = file_path
+                    for unused_file in self.unused_files:
+                        if unused_file.endswith(os.path.basename(file_path)) or unused_file == file_path:
+                            original_path = unused_file
+                            break
+                    
+                    if original_path not in self.deleted_files:
+                        selected_count += 1
+                        selected_size += self._get_file_size(original_path)
+                        valid_selections.append(original_path)
+                        
+                except Exception as e:
+                    print(f"處理選中項目時發生錯誤: {str(e)}")
+                    continue
+            
+            if selected_count > 0:
+                size_text = self._format_file_size(selected_size)
+                selection_text = f"已選擇：{selected_count} 個檔案 ({size_text})"
+                self.selection_stats_label.config(text=selection_text, foreground="blue")
+            else:
+                self.selection_stats_label.config(text="")
+                
+        except Exception as e:
+            print(f"更新選擇統計時發生錯誤: {str(e)}")
     
     def _create_context_menu(self, widget, file_path: str):
         """為檔案項目創建右鍵選單"""
