@@ -108,6 +108,9 @@ class MainWindow:
         )
         self.unused_listbox.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
         
+        # 綁定選擇事件來處理已刪除檔案的選擇限制
+        self.unused_listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
+        
         # 檔案列表的捲軸
         unused_scrollbar = ttk.Scrollbar(unused_frame, orient="vertical", command=self.unused_listbox.yview)
         unused_scrollbar.grid(row=2, column=1, sticky=(tk.N, tk.S))
@@ -485,37 +488,8 @@ class MainWindow:
                     # 只有在GUI已初始化的情況下才更新UI
                     if hasattr(self, 'unused_listbox') and self.unused_listbox.winfo_exists():
                         try:
-                            # 將檔案標籤變為灰色並加上刪除線效果
-                            if file_path in self.file_labels:
-                                labels = self.file_labels[file_path]
-                                if labels['name'].winfo_exists():
-                                    labels['name'].config(
-                                        foreground="gray",
-                                        font=("TkDefaultFont", 9, "overstrike")
-                                    )
-                                if labels['dir'].winfo_exists():
-                                    labels['dir'].config(
-                                        foreground="lightgray",
-                                        font=("TkDefaultFont", 8, "overstrike")
-                                    )
-                                if labels['size'] and labels['size'].winfo_exists():
-                                    labels['size'].config(
-                                        foreground="lightgray",
-                                        font=("TkDefaultFont", 8, "overstrike")
-                                    )
-                            
-                            # 禁用checkbox
-                            if file_path in self.file_checkboxes:
-                                # 找到對應的checkbox widget並禁用
-                                for widget in self.unused_listbox.winfo_children():
-                                    for child in widget.winfo_children():
-                                        if isinstance(child, ttk.Checkbutton) and child.winfo_exists() and child.cget("variable") == str(self.file_checkboxes[file_path]):
-                                            child.config(state="disabled")
-                                            break
-                            
-                            # 禁用刪除按鈕
-                            if file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
-                                self.file_delete_buttons[file_path].config(state="disabled")
+                            # 找到檔案在Listbox中的位置並更新顯示
+                            self._update_deleted_file_display(file_path)
                         except Exception as ui_error:
                             # UI更新失敗不影響刪除統計
                             self._append_output(f"⚠️ UI更新失敗: {str(ui_error)}")
@@ -527,6 +501,70 @@ class MainWindow:
                 self._append_output(f"❌ 刪除檔案失敗: {file_path} - {str(e)}")
         
         self._append_output(f"✅ 批量刪除完成: 成功 {deleted_count} 個，失敗 {failed_count} 個")
+    
+    def _update_deleted_file_display(self, file_path: str):
+        """更新已刪除檔案在Listbox中的顯示"""
+        try:
+            # 找到檔案在Listbox中的索引
+            items = self.unused_listbox.get(0, tk.END)
+            file_index = -1
+            
+            for i, item in enumerate(items):
+                if item == file_path or item.endswith(file_path):
+                    file_index = i
+                    break
+            
+            if file_index >= 0:
+                # 標記檔案為已刪除狀態
+                if not hasattr(self, 'deleted_files'):
+                    self.deleted_files = set()
+                self.deleted_files.add(file_path)
+                
+                # 更新Listbox項目的顯示，添加已刪除標記和視覺效果
+                self.unused_listbox.delete(file_index)
+                deleted_display = f"🗑️ [已刪除] {os.path.basename(file_path)} - {os.path.dirname(file_path)}"
+                self.unused_listbox.insert(file_index, deleted_display)
+                
+                # 清除該項目的選擇狀態
+                self.unused_listbox.selection_clear(file_index)
+                
+                # 追蹤已刪除檔案的索引，防止重新選擇
+                if not hasattr(self, 'disabled_items'):
+                    self.disabled_items = set()
+                self.disabled_items.add(file_index)
+                
+                # 嘗試設定該項目為灰色背景（如果支援的話）
+                try:
+                    self.unused_listbox.itemconfig(file_index, {'bg': '#E0E0E0', 'fg': '#808080'})
+                except:
+                    # 如果不支援itemconfig，則忽略
+                    pass
+                
+                print(f"已更新檔案顯示: {file_path} (索引: {file_index})")
+            
+        except Exception as e:
+            print(f"更新刪除檔案顯示時發生錯誤: {str(e)}")
+    
+    def _on_listbox_select(self, event):
+        """處理Listbox選擇事件，防止選擇已刪除的檔案"""
+        try:
+            if hasattr(self, 'disabled_items'):
+                # 取得當前選擇
+                current_selection = list(self.unused_listbox.curselection())
+                
+                # 移除已刪除檔案的選擇
+                valid_selection = []
+                for index in current_selection:
+                    if index not in self.disabled_items:
+                        valid_selection.append(index)
+                
+                # 如果選擇有變化，更新選擇狀態
+                if len(valid_selection) != len(current_selection):
+                    self.unused_listbox.selection_clear(0, tk.END)
+                    for index in valid_selection:
+                        self.unused_listbox.selection_set(index)
+        except Exception as e:
+            print(f"處理Listbox選擇事件時發生錯誤: {str(e)}")
     
     def _clear_all_unused_files(self):
         """清除所有未引用的檔案"""
@@ -560,37 +598,8 @@ class MainWindow:
                     # 只有在GUI已初始化的情況下才更新UI
                     if gui_initialized:
                         try:
-                            # 將檔案標籤變為灰色並加上刪除線效果
-                            if file_path in self.file_labels:
-                                labels = self.file_labels[file_path]
-                                if labels['name'].winfo_exists():
-                                    labels['name'].config(
-                                        foreground="gray",
-                                        font=("TkDefaultFont", 9, "overstrike")
-                                    )
-                                if labels['dir'].winfo_exists():
-                                    labels['dir'].config(
-                                        foreground="lightgray",
-                                        font=("TkDefaultFont", 8, "overstrike")
-                                    )
-                                if labels['size'] and labels['size'].winfo_exists():
-                                    labels['size'].config(
-                                        foreground="lightgray",
-                                        font=("TkDefaultFont", 8, "overstrike")
-                                    )
-                            
-                            # 禁用checkbox
-                            if file_path in self.file_checkboxes:
-                                # 找到對應的checkbox widget並禁用
-                                for widget in self.unused_listbox.winfo_children():
-                                    for child in widget.winfo_children():
-                                        if isinstance(child, ttk.Checkbutton) and child.winfo_exists() and child.cget("variable") == str(self.file_checkboxes[file_path]):
-                                            child.config(state="disabled")
-                                            break
-                            
-                            # 禁用刪除按鈕
-                            if hasattr(self, 'file_delete_buttons') and file_path in self.file_delete_buttons and self.file_delete_buttons[file_path].winfo_exists():
-                                self.file_delete_buttons[file_path].config(state="disabled")
+                            # 找到檔案在Listbox中的位置並更新顯示
+                            self._update_deleted_file_display(file_path)
                         except Exception as ui_error:
                             # UI更新失敗不影響刪除統計
                             self._append_output(f"⚠️ UI更新失敗: {str(ui_error)}")
@@ -608,16 +617,21 @@ class MainWindow:
         unused_files = []
         
         try:
-            # 取得所有圖片檔案
-            image_extensions = {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr'}
+            # 擴展檔案類型，包含圖片檔案和效果檔案
+            target_extensions = {
+                # 圖片檔案
+                '.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr',
+                # 效果檔案
+                '.efkmat', '.efkmodel'
+            }
             
             for root, dirs, files in os.walk(project_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     file_ext = os.path.splitext(file)[1].lower()
                     
-                    # 檢查是否為圖片檔案
-                    if file_ext in image_extensions:
+                    # 檢查是否為目標檔案類型
+                    if file_ext in target_extensions:
                         # 檢查是否被引用
                         if file_path not in referenced_files:
                             unused_files.append(file_path)
@@ -709,61 +723,88 @@ class MainWindow:
             self._append_output(f"❌ 錯誤: {error_msg}")
     
     def _find_and_display_unused_files(self, results: Dict[str, List[str]], scanner):
-        """找出並顯示未引用的檔案"""
+        """找出並顯示未引用的檔案 - 修正邏輯16: 考慮目錄範圍限制"""
         try:
-            # 收集所有被引用的檔案路徑
+            # 收集所有被引用的檔案路徑 - 新增目錄範圍檢查
             referenced_files = set()
             
-            # 方法1: 從掃描結果中收集引用檔案
+            # 方法1: 從掃描結果中收集引用檔案，但要檢查目錄範圍
             for efk_file, ref_files in results.items():
+                efk_dir = os.path.dirname(efk_file)  # EFK檔案所在的目錄
+                
                 for ref_file in ref_files:
                     # 嘗試找到檔案的完整路徑
-                    full_path = self._find_file_path(ref_file, self.selected_path.get())
+                    full_path = self._find_file_path_in_directory(ref_file, efk_dir)
                     if full_path:
-                        referenced_files.add(full_path)
-                        self._append_output(f"🔍 找到引用檔案: {ref_file} -> {full_path}")
+                        # 檢查引用檔案是否在同一個目錄下（或其子目錄）
+                        if self._is_in_same_directory_scope(efk_file, full_path):
+                            referenced_files.add(full_path)
+                            self._append_output(f"🔍 找到同目錄引用檔案: {ref_file} -> {full_path}")
+                        else:
+                            self._append_output(f"⚠️  跨目錄引用（忽略）: {ref_file} -> {full_path}")
                     else:
-                        self._append_output(f"⚠️  無法解析引用檔案: {ref_file}")
+                        # 如果在EFK檔案目錄找不到，嘗試在整個專案中找
+                        full_path = self._find_file_path(ref_file, self.selected_path.get())
+                        if full_path and self._is_in_same_directory_scope(efk_file, full_path):
+                            referenced_files.add(full_path)
+                            self._append_output(f"🔍 找到引用檔案: {ref_file} -> {full_path}")
+                        else:
+                            self._append_output(f"⚠️  無法解析引用檔案或跨目錄: {ref_file}")
             
             # 方法2: 直接從掃描器獲取所有檔案
             all_files_in_project = set()
-            image_extensions = {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr'}
+            # 擴展檔案類型，包含圖片檔案和效果檔案
+            target_extensions = {
+                # 圖片檔案
+                '.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr',
+                # 效果檔案
+                '.efkmat', '.efkmodel'
+            }
             
             for root, dirs, files in os.walk(self.selected_path.get()):
                 for file in files:
                     file_path = os.path.join(root, file)
                     file_ext = os.path.splitext(file)[1].lower()
                     
-                    # 檢查是否為圖片檔案
-                    if file_ext in image_extensions:
+                    # 檢查是否為目標檔案類型
+                    if file_ext in target_extensions:
                         all_files_in_project.add(file_path)
             
-            self._append_output(f"📊 專案中總共有 {len(all_files_in_project)} 個圖片檔案")
-            self._append_output(f"📊 被引用的檔案: {len(referenced_files)} 個")
+            self._append_output(f"📊 專案中總共有 {len(all_files_in_project)} 個目標檔案（圖片 + 效果檔案）")
+            self._append_output(f"📊 被引用的檔案（同目錄範圍）: {len(referenced_files)} 個")
             
-            # 方法3: 改進的未引用檔案檢查
-            # 使用更精確的匹配邏輯
+            # 方法3: 改進的未引用檔案檢查 - 加入目錄範圍限制
             unused_files = []
             for file_path in all_files_in_project:
                 is_referenced = False
                 
-                # 檢查是否在引用檔案列表中
+                # 檢查是否在引用檔案列表中（已經過目錄範圍檢查）
                 if file_path in referenced_files:
                     is_referenced = True
                 else:
-                    # 檢查檔案名是否被引用（處理路徑不一致的情況）
+                    # 進一步檢查檔案名匹配，但仍要考慮目錄範圍
                     file_name = os.path.basename(file_path)
+                    file_dir = os.path.dirname(file_path)
+                    
                     for ref_path in referenced_files:
                         if os.path.basename(ref_path).lower() == file_name.lower():
-                            is_referenced = True
-                            break
+                            # 檢查是否在相同的目錄範圍內
+                            if self._is_in_same_directory_scope(file_path, ref_path):
+                                is_referenced = True
+                                break
                     
-                    # 檢查相對路徑是否被引用
+                    # 檢查相對路徑是否被引用（同樣考慮目錄範圍）
                     if not is_referenced:
                         relative_path = os.path.relpath(file_path, self.selected_path.get())
-                        for ref_file in [ref for efk_file, ref_files in results.items() for ref in ref_files]:
-                            if ref_file.replace('\\', '/').lower() == relative_path.replace('\\', '/').lower():
-                                is_referenced = True
+                        for efk_file, ref_files_list in results.items():
+                            efk_dir = os.path.dirname(efk_file)
+                            for ref_file in ref_files_list:
+                                if ref_file.replace('\\', '/').lower() == relative_path.replace('\\', '/').lower():
+                                    # 檢查是否在同一個目錄範圍
+                                    if self._is_in_same_directory_scope(efk_file, file_path):
+                                        is_referenced = True
+                                        break
+                            if is_referenced:
                                 break
                 
                 if not is_referenced:
@@ -849,10 +890,9 @@ class MainWindow:
             traceback.print_exc()
     
     def _find_file_path(self, file_name: str, project_path: str) -> str:
-        """根據檔案名尋找完整路徑"""
+        """根據檔案名尋找完整路徑 - 修復跨目錄引用問題"""
         try:
             # 方法1: 直接檢查完整路徑
-            # 如果file_name已經是完整路徑，直接返回
             if os.path.isabs(file_name) and os.path.exists(file_name):
                 return file_name
             
@@ -861,67 +901,230 @@ class MainWindow:
             if os.path.exists(relative_path):
                 return relative_path
             
-            # 方法3: 在專案路徑下搜尋檔案（改進版本）
-            # 首先嘗試精確匹配
-            for root, dirs, files in os.walk(project_path):
-                for file in files:
-                    if file.lower() == os.path.basename(file_name).lower():
-                        found_path = os.path.join(root, file)
-                        # 檢查是否為圖片檔案
-                        file_ext = os.path.splitext(file)[1].lower()
-                        if file_ext in {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr'}:
-                            return found_path
-            
-            # 方法4: 處理相對路徑的情況
-            # 如果file_name包含路徑分隔符，嘗試相對路徑匹配
+            # 方法3: 改進的檔案搜尋 - 優先考慮路徑結構匹配
             if '/' in file_name or '\\' in file_name:
-                # 移除開頭的路徑分隔符
-                clean_name = file_name.lstrip('/\\')
-                relative_path = os.path.join(project_path, clean_name)
-                if os.path.exists(relative_path):
-                    return relative_path
+                # 如果引用包含路徑，嘗試精確匹配路徑結構
+                clean_name = file_name.replace('\\', '/').strip('/')
                 
-                # 嘗試在子目錄中尋找
+                # 在專案路徑下搜尋匹配的檔案結構
                 for root, dirs, files in os.walk(project_path):
                     for file in files:
-                        if file.lower() == os.path.basename(clean_name).lower():
-                            found_path = os.path.join(root, file)
-                            file_ext = os.path.splitext(file)[1].lower()
-                            if file_ext in {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr'}:
-                                return found_path
+                        file_path = os.path.join(root, file)
+                        relative_to_project = os.path.relpath(file_path, project_path)
+                        relative_normalized = relative_to_project.replace('\\', '/')
+                        
+                        # 精確匹配相對路徑
+                        if relative_normalized.lower() == clean_name.lower():
+                            return file_path
+                        
+                        # 檢查末尾匹配（處理部分路徑的情況）
+                        if relative_normalized.lower().endswith(clean_name.lower()):
+                            # 確保是完整的檔案路徑匹配，而不是部分字串匹配
+                            parts = clean_name.split('/')
+                            rel_parts = relative_normalized.split('/')
+                            if len(parts) <= len(rel_parts):
+                                if rel_parts[-len(parts):] == [p.lower() for p in parts]:
+                                    return file_path
             
-            # 方法5: 處理子目錄中的檔案
-            # 如果檔案在子目錄中，嘗試匹配子目錄路徑
-            if '/' in file_name or '\\' in file_name:
-                # 分割路徑
-                path_parts = file_name.replace('\\', '/').split('/')
-                if len(path_parts) > 1:
-                    # 嘗試匹配子目錄結構
-                    for root, dirs, files in os.walk(project_path):
-                        for file in files:
-                            if file.lower() == path_parts[-1].lower():
-                                found_path = os.path.join(root, file)
-                                file_ext = os.path.splitext(file)[1].lower()
-                                if file_ext in {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr'}:
-                                    # 檢查路徑結構是否匹配
-                                    relative_path = os.path.relpath(found_path, project_path)
-                                    if relative_path.replace('\\', '/').lower() == file_name.replace('\\', '/').lower():
-                                        return found_path
-                                    
-            # 方法6: 模糊匹配（最後手段）
-            # 如果所有精確匹配都失敗，嘗試模糊匹配
-            for root, dirs, files in os.walk(project_path):
-                for file in files:
-                    if file.lower() == os.path.basename(file_name).lower():
-                        found_path = os.path.join(root, file)
+            # 方法4: 檔案名精確匹配 - 改進版
+            target_filename = os.path.basename(file_name).lower()
+            target_ext = os.path.splitext(target_filename)[1]
+            
+            # 只搜尋相同副檔名的檔案
+            valid_extensions = {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr', '.efkmat', '.efkmodel'}
+            
+            if target_ext in valid_extensions:
+                matches = []
+                for root, dirs, files in os.walk(project_path):
+                    for file in files:
+                        if file.lower() == target_filename:
+                            file_path = os.path.join(root, file)
+                            matches.append(file_path)
+                
+                # 如果只有一個匹配，直接返回
+                if len(matches) == 1:
+                    return matches[0]
+                
+                # 如果有多個匹配，優先選擇路徑結構相似的
+                if len(matches) > 1 and ('/' in file_name or '\\' in file_name):
+                    file_dir_parts = file_name.replace('\\', '/').split('/')[:-1]  # 除了檔案名的目錄部分
+                    
+                    best_match = None
+                    max_common_parts = 0
+                    
+                    for match in matches:
+                        match_rel = os.path.relpath(match, project_path)
+                        match_dir_parts = match_rel.replace('\\', '/').split('/')[:-1]
+                        
+                        # 計算共同的路徑部分
+                        common_parts = 0
+                        min_len = min(len(file_dir_parts), len(match_dir_parts))
+                        for i in range(min_len):
+                            if file_dir_parts[-(i+1)].lower() == match_dir_parts[-(i+1)].lower():
+                                common_parts += 1
+                            else:
+                                break
+                        
+                        if common_parts > max_common_parts:
+                            max_common_parts = common_parts
+                            best_match = match
+                    
+                    if best_match:
+                        return best_match
+                
+                # 如果沒有最佳匹配，返回第一個
+                if matches:
+                    return matches[0]
+            
+            # 方法5: 模糊檔案名匹配（處理檔案名可能有輕微差異的情況）
+            base_name = os.path.splitext(os.path.basename(file_name))[0].lower()
+            base_ext = os.path.splitext(os.path.basename(file_name))[1].lower()
+            
+            if base_ext in valid_extensions and len(base_name) > 2:
+                for root, dirs, files in os.walk(project_path):
+                    for file in files:
+                        file_base = os.path.splitext(file)[0].lower()
                         file_ext = os.path.splitext(file)[1].lower()
-                        if file_ext in {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr'}:
-                            return found_path
+                        
+                        # 相同副檔名且檔案名相似
+                        if file_ext == base_ext and file_base == base_name:
+                            return os.path.join(root, file)
                                 
         except Exception as e:
             print(f"路徑解析錯誤: {str(e)}")
         
         return None
+    
+    def _find_file_path_in_directory(self, file_name: str, directory_path: str) -> str:
+        """在特定目錄下尋找檔案的完整路徑"""
+        try:
+            # 方法1: 直接檢查完整路徑
+            if os.path.isabs(file_name) and os.path.exists(file_name):
+                return file_name
+            
+            # 方法2: 相對於目錄檢查
+            relative_path = os.path.join(directory_path, file_name)
+            if os.path.exists(relative_path):
+                return relative_path
+            
+            # 方法3: 改進的檔案搜尋 - 優先考慮路徑結構匹配
+            if '/' in file_name or '\\' in file_name:
+                # 如果引用包含路徑，嘗試精確匹配路徑結構
+                clean_name = file_name.replace('\\', '/').strip('/')
+                
+                # 在目錄下搜尋匹配的檔案結構
+                for root, dirs, files in os.walk(directory_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        relative_to_dir = os.path.relpath(file_path, directory_path)
+                        relative_normalized = relative_to_dir.replace('\\', '/')
+                        
+                        # 精確匹配相對路徑
+                        if relative_normalized.lower() == clean_name.lower():
+                            return file_path
+                        
+                        # 檢查末尾匹配（處理部分路徑的情況）
+                        if relative_normalized.lower().endswith(clean_name.lower()):
+                            # 確保是完整的檔案路徑匹配，而不是部分字串匹配
+                            parts = clean_name.split('/')
+                            rel_parts = relative_normalized.split('/')
+                            if len(parts) <= len(rel_parts):
+                                if rel_parts[-len(parts):] == [p.lower() for p in parts]:
+                                    return file_path
+            
+            # 方法4: 檔案名精確匹配 - 改進版
+            target_filename = os.path.basename(file_name).lower()
+            target_ext = os.path.splitext(target_filename)[1]
+            
+            # 只搜尋相同副檔名的檔案
+            valid_extensions = {'.png', '.jpg', '.jpeg', '.tga', '.dds', '.bmp', '.tiff', '.tif', '.webp', '.ktx', '.pvr', '.efkmat', '.efkmodel'}
+            
+            if target_ext in valid_extensions:
+                matches = []
+                for root, dirs, files in os.walk(directory_path):
+                    for file in files:
+                        if file.lower() == target_filename:
+                            file_path = os.path.join(root, file)
+                            matches.append(file_path)
+                
+                # 如果只有一個匹配，直接返回
+                if len(matches) == 1:
+                    return matches[0]
+                
+                # 如果有多個匹配，優先選擇路徑結構相似的
+                if len(matches) > 1 and ('/' in file_name or '\\' in file_name):
+                    file_dir_parts = file_name.replace('\\', '/').split('/')[:-1]  # 除了檔案名的目錄部分
+                    
+                    best_match = None
+                    max_common_parts = 0
+                    
+                    for match in matches:
+                        match_rel = os.path.relpath(match, directory_path)
+                        match_dir_parts = match_rel.replace('\\', '/').split('/')[:-1]
+                        
+                        # 計算共同的路徑部分
+                        common_parts = 0
+                        min_len = min(len(file_dir_parts), len(match_dir_parts))
+                        for i in range(min_len):
+                            if file_dir_parts[-(i+1)].lower() == match_dir_parts[-(i+1)].lower():
+                                common_parts += 1
+                            else:
+                                break
+                        
+                        if common_parts > max_common_parts:
+                            max_common_parts = common_parts
+                            best_match = match
+                    
+                    if best_match:
+                        return best_match
+                
+                # 如果沒有最佳匹配，返回第一個
+                if matches:
+                    return matches[0]
+            
+            # 方法5: 模糊檔案名匹配（處理檔案名可能有輕微差異的情況）
+            base_name = os.path.splitext(os.path.basename(file_name))[0].lower()
+            base_ext = os.path.splitext(os.path.basename(file_name))[1].lower()
+            
+            if base_ext in valid_extensions and len(base_name) > 2:
+                for root, dirs, files in os.walk(directory_path):
+                    for file in files:
+                        file_base = os.path.splitext(file)[0].lower()
+                        file_ext = os.path.splitext(file)[1].lower()
+                        
+                        # 相同副檔名且檔案名相似
+                        if file_ext == base_ext and file_base == base_name:
+                            return os.path.join(root, file)
+                                
+        except Exception as e:
+            print(f"路徑解析錯誤: {str(e)}")
+        
+        return None
+    
+    def _is_in_same_directory_scope(self, efk_file_path: str, ref_file_path: str) -> bool:
+        """檢查引用檔案是否在EFK檔案所在的目錄範圍內"""
+        try:
+            efk_dir = os.path.dirname(efk_file_path)
+            ref_dir = os.path.dirname(ref_file_path)
+            
+            # 標準化路徑
+            efk_dir = os.path.normpath(efk_dir)
+            ref_dir = os.path.normpath(ref_dir)
+            
+            # 檢查兩種情況：
+            # 1. 引用檔案在相同目錄
+            # 2. 引用檔案在EFK檔案目錄的子目錄中
+            if efk_dir == ref_dir:
+                return True
+            
+            # 檢查引用檔案是否在EFK檔案目錄的子目錄中
+            rel_path = os.path.relpath(ref_dir, efk_dir)
+            # 如果相對路徑不以 '..' 開始，表示是子目錄或當前目錄
+            return not rel_path.startswith('..')
+            
+        except Exception as e:
+            print(f"檢查目錄範圍時發生錯誤: {str(e)}")
+            return False
     
     def _show_analysis_results_in_output(self, results, scanner):
         """在輸出視窗中顯示分析結果"""
